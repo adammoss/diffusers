@@ -422,7 +422,10 @@ def main(args):
                 x = self.data[index]
 
                 if self.train:
-                    x = x
+                    if np.random.rand() < 0.5:
+                        x = torch.flip(x, [1, ])
+                    if np.random.rand() < 0.5:
+                        x = torch.flip(x, [2, ])
 
                 return {"input": x}
 
