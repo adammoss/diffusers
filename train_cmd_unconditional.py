@@ -249,7 +249,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=5000,
+        default=500,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -400,7 +400,7 @@ def main(args):
         if not os.path.exists(args.cache_dir):
             os.makedirs(args.cache_dir)
 
-        if not os.path.isfile(os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)):
+        if not os.path.isfile(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)):
             urllib.request.urlretrieve(
                 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_field,
                 os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
@@ -431,8 +431,7 @@ def main(args):
 
         dataset = CustomDataset(X, train=True)
 
-        num_channels = dataset[0].size()[0]
-        print(num_channels)
+        num_channels = dataset[0]['input'].size()[0]
 
         logger.info(f"Dataset size: {len(dataset)}")
 
