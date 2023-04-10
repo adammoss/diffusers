@@ -426,7 +426,7 @@ def main(args):
                 if self.train:
                     x = x
 
-                return x
+                return {"input": x}
 
             def __len__(self):
                 return len(self.data)
