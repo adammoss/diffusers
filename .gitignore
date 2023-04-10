@@ -128,4 +128,4 @@ dmypy.json
 
 # output
 output/
-*.npy
+data/

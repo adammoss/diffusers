@@ -73,6 +73,11 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--dataset_dir",
+        type=str,
+        default='data',
+    )
+    parser.add_argument(
         "--dataset_config_name",
         type=str,
         default=None,
@@ -394,11 +399,15 @@ def main(args):
     # download the dataset.
     if args.dataset_field is not None:
 
-        if not os.path.isfile('Maps_ % s_LH_z = 0.00.npy' % args.dataset_field):
+        if not os.path.exists(args.dataset_dir):
+            os.makedirs(args.dataset_dir)
+
+        if not os.path.isfile(os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)):
             urllib.request.urlretrieve(
                 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_field,
-                'Maps_%s_LH_z=0.00.npy' % args.dataset_field
+                os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
             )
+
         X = np.load('Maps_%s_LH_z=0.00.npy' % args.dataset_field)
         X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
         X = np.log(X)
