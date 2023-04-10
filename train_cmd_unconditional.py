@@ -73,11 +73,6 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
-        "--dataset_dir",
-        type=str,
-        default='data',
-    )
-    parser.add_argument(
         "--dataset_config_name",
         type=str,
         default=None,
@@ -109,7 +104,7 @@ def parse_args():
     parser.add_argument(
         "--cache_dir",
         type=str,
-        default=None,
+        default='data',
         help="The directory where the downloaded models and datasets will be stored.",
     )
     parser.add_argument(
@@ -397,18 +392,21 @@ def main(args):
 
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
+
+    num_channels = 3
+
     if args.dataset_field is not None:
 
-        if not os.path.exists(args.dataset_dir):
-            os.makedirs(args.dataset_dir)
+        if not os.path.exists(args.cache_dir):
+            os.makedirs(args.cache_dir)
 
         if not os.path.isfile(os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)):
             urllib.request.urlretrieve(
                 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_field,
-                os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
+                os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
             )
 
-        X = np.load(os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field))
+        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field))
         X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
         X = np.log(X)
         d = np.max(X) - np.min(X)
@@ -432,6 +430,8 @@ def main(args):
                 return len(self.data)
 
         dataset = CustomDataset(X, train=True)
+
+        num_channels = dataset[0].size()[0]
 
         logger.info(f"Dataset size: {len(dataset)}")
 
@@ -473,14 +473,12 @@ def main(args):
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
 
-    print(dataset[0])
-
     # Initialize the model
     if args.model_config_name_or_path is None:
         model = UNet2DModel(
             sample_size=args.resolution,
-            in_channels=1,
-            out_channels=1,
+            in_channels=num_channels,
+            out_channels=num_channels,
             layers_per_block=2,
             block_out_channels=(128, 128, 256, 256, 512, 512),
             down_block_types=(
