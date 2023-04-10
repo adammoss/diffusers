@@ -249,7 +249,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=500,
+        default=5000,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -432,6 +432,7 @@ def main(args):
         dataset = CustomDataset(X, train=True)
 
         num_channels = dataset[0].size()[0]
+        print(num_channels)
 
         logger.info(f"Dataset size: {len(dataset)}")
 
