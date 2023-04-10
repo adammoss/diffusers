@@ -408,7 +408,7 @@ def main(args):
                 os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
             )
 
-        X = np.load('Maps_%s_LH_z=0.00.npy' % args.dataset_field)
+        X = np.load(os.path.join(args.dataset_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field))
         X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
         X = np.log(X)
         d = np.max(X) - np.min(X)
