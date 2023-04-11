@@ -7,3 +7,4 @@ datasets
 wandb
 tensorboard
 scikit-image
+xformers
