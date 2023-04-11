@@ -24,7 +24,7 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 import diffusers
-from diffusers import DDPMPipeline, DDPMScheduler, UNet2DModel
+from diffusers import DDPMPipeline, DDPMScheduler, UNet2DModel, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from diffusers.training_utils import EMAModel
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
@@ -119,7 +119,13 @@ def parse_args():
     parser.add_argument(
         "--data_size",
         type=int,
-        default=10000,
+        default=None,
+    )
+    parser.add_argument(
+        "--conditional",
+        default=False,
+        action="store_true",
+        help="whether to use conditional U-net",
     )
     parser.add_argument(
         "--center_crop",
@@ -321,6 +327,9 @@ def main(args):
             raise ImportError("Make sure to install wandb if you want to use it for logging during training.")
         import wandb
 
+    # Which U-net model to use
+    UNetModel = UNet2DConditionModel if args.conditional else UNet2DModel
+
     # `accelerate` 0.16.0 will have better support for customized saving
     if version.parse(accelerate.__version__) >= version.parse("0.16.0"):
         # create custom saving & loading hooks so that `accelerator.save_state(...)` serializes in a nice format
@@ -336,7 +345,7 @@ def main(args):
 
         def load_model_hook(models, input_dir):
             if args.use_ema:
-                load_model = EMAModel.from_pretrained(os.path.join(input_dir, "unet_ema"), UNet2DModel)
+                load_model = EMAModel.from_pretrained(os.path.join(input_dir, "unet_ema"), UNetModel)
                 ema_model.load_state_dict(load_model.state_dict())
                 ema_model.to(accelerator.device)
                 del load_model
@@ -346,7 +355,7 @@ def main(args):
                 model = models.pop()
 
                 # load diffusers style into model
-                load_model = UNet2DModel.from_pretrained(input_dir, subfolder="unet")
+                load_model = UNetModel.from_pretrained(input_dir, subfolder="unet")
                 model.register_to_config(**load_model.config)
 
                 model.load_state_dict(load_model.state_dict())
@@ -393,8 +402,6 @@ def main(args):
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
 
-    num_channels = 3
-
     if args.dataset_field is not None:
 
         if not os.path.exists(args.cache_dir):
@@ -406,35 +413,57 @@ def main(args):
                 os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
             )
 
-        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field))
-        X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
+        if 'simba' in args.dataset_field.lower():
+            parameter_file = 'params_SIMBA.txt'
+        elif 'illustris' in args.dataset_field.lower():
+            parameter_file = 'params_IllustrisTNG.txt'
+
+        if not os.path.isfile(os.path.join(args.cache_dir, parameter_file)):
+            urllib.request.urlretrieve(
+                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file,
+                os.path.join(args.cache_dir, parameter_file)
+            )
+
+        Y = np.loadtxt(os.path.join(args.cache_dir, parameter_file)).astype(np.float32)
+        Y = np.repeat(Y, 15, axis=0)
+        if args.data_size is not None:
+            Y = np.array([params for params in Y[0:args.data_size]])
+        minimum = np.min(Y, axis=0)
+        maximum = np.max(Y, axis=0)
+        Y = (Y - minimum) / (maximum - minimum)
+
+        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)).astype(np.float32)
+        if args.data_size is not None:
+            X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
+        else:
+            X = np.array([resize(img, (args.resolution, args.resolution)) for img in X])
         X = np.log(X)
         d = np.max(X) - np.min(X)
         X = 2 * (X - np.min(X) - d / 2) / d
         X = np.expand_dims(X, 1)
 
         class CustomDataset(Dataset):
-            def __init__(self, data, train=True):
+            def __init__(self, data, parameters, train=True):
                 self.data = torch.from_numpy(data)
+                self.parameters = torch.from_numpy(parameters)
                 self.train = train
 
             def __getitem__(self, index):
                 x = self.data[index]
+                y = self.parameters[index]
 
-                if self.train:
+                if self.train and args.random_flip:
                     if np.random.rand() < 0.5:
                         x = torch.flip(x, [1, ])
                     if np.random.rand() < 0.5:
                         x = torch.flip(x, [2, ])
 
-                return {"input": x}
+                return {"input": x, "parameters": y}
 
             def __len__(self):
                 return len(self.data)
 
-        dataset = CustomDataset(X, train=True)
-
-        num_channels = dataset[0]['input'].size()[0]
+        dataset = CustomDataset(X, Y, train=True)
 
         logger.info(f"Dataset size: {len(dataset)}")
 
@@ -472,38 +501,66 @@ def main(args):
 
         dataset.set_transform(transform_images)
 
+    num_channels = dataset[0]["input"].size()[0]
+
     train_dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
 
     # Initialize the model
     if args.model_config_name_or_path is None:
-        model = UNet2DModel(
-            sample_size=args.resolution,
-            in_channels=num_channels,
-            out_channels=num_channels,
-            layers_per_block=2,
-            block_out_channels=(128, 128, 256, 256, 512, 512),
-            down_block_types=(
-                "DownBlock2D",
-                "DownBlock2D",
-                "DownBlock2D",
-                "DownBlock2D",
-                "AttnDownBlock2D",
-                "DownBlock2D",
-            ),
-            up_block_types=(
-                "UpBlock2D",
-                "AttnUpBlock2D",
-                "UpBlock2D",
-                "UpBlock2D",
-                "UpBlock2D",
-                "UpBlock2D",
-            ),
-        )
+        if args.conditional:
+            model = UNetModel(
+                sample_size=args.resolution,
+                in_channels=num_channels,
+                out_channels=num_channels,
+                encoder_hid_dim=dataset[0]["parameters"].size()[0],
+                layers_per_block=2,
+                block_out_channels=(128, 128, 256, 256, 512, 512),
+                down_block_types=(
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "AttnDownBlock2D",
+                    "DownBlock2D",
+                ),
+                up_block_types=(
+                    "UpBlock2D",
+                    "AttnUpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                ),
+            )
+        else:
+            model = UNetModel(
+                sample_size=args.resolution,
+                in_channels=num_channels,
+                out_channels=num_channels,
+                layers_per_block=2,
+                block_out_channels=(128, 128, 256, 256, 512, 512),
+                down_block_types=(
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "AttnDownBlock2D",
+                    "DownBlock2D",
+                ),
+                up_block_types=(
+                    "UpBlock2D",
+                    "AttnUpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                ),
+            )
     else:
-        config = UNet2DModel.load_config(args.model_config_name_or_path)
-        model = UNet2DModel.from_config(config)
+        config = UNetModel.load_config(args.model_config_name_or_path)
+        model = UNetModel.from_config(config)
 
     # Create EMA for the model.
     if args.use_ema:
@@ -513,7 +570,7 @@ def main(args):
             use_ema_warmup=True,
             inv_gamma=args.ema_inv_gamma,
             power=args.ema_power,
-            model_cls=UNet2DModel,
+            model_cls=UNetModel,
             model_config=model.config,
         )
 
@@ -625,6 +682,7 @@ def main(args):
                 continue
 
             clean_images = batch["input"]
+
             # Sample noise that we'll add to the images
             noise = torch.randn(clean_images.shape).to(clean_images.device)
             bsz = clean_images.shape[0]
@@ -639,7 +697,10 @@ def main(args):
 
             with accelerator.accumulate(model):
                 # Predict the noise residual
-                model_output = model(noisy_images, timesteps).sample
+                if args.conditional:
+                    model_output = model(noisy_images, timesteps, batch["parameters"]).sample
+                else:
+                    model_output = model(noisy_images, timesteps).sample
 
                 if args.prediction_type == "epsilon":
                     loss = F.mse_loss(model_output, noise)  # this could have different weights!
