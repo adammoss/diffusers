@@ -516,6 +516,20 @@ def main(args):
                 in_channels=num_channels,
                 out_channels=num_channels,
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
+                block_out_channels=(128, 256, 512, 512),
+                cross_attention_dim=512,
+                down_block_types=(
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "DownBlock2D",
+                ),
+                up_block_types=(
+                    "UpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                ),
             )
         else:
             model = UNetModel(
