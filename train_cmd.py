@@ -431,6 +431,7 @@ def main(args):
         minimum = np.min(Y, axis=0)
         maximum = np.max(Y, axis=0)
         Y = (Y - minimum) / (maximum - minimum)
+        Y = np.expand_dims(Y, 1)
 
         X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)).astype(np.float32)
         if args.data_size is not None:
@@ -514,7 +515,7 @@ def main(args):
                 sample_size=args.resolution,
                 in_channels=num_channels,
                 out_channels=num_channels,
-                encoder_hid_dim=dataset[0]["parameters"].size()[0],
+                encoder_hid_dim=dataset[0]["parameters"].size()[1],
                 layers_per_block=2,
                 block_out_channels=(128, 128, 256, 256, 512, 512),
                 down_block_types=(
