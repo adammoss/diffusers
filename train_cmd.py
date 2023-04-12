@@ -404,6 +404,27 @@ def main(args):
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
 
+    class CustomDataset(Dataset):
+        def __init__(self, data, parameters, augment=True):
+            self.data = torch.from_numpy(data)
+            self.parameters = torch.from_numpy(parameters)
+            self.augment = augment
+
+        def __getitem__(self, index):
+            x = self.data[index]
+            y = self.parameters[index]
+
+            if self.augment:
+                if np.random.rand() < 0.5:
+                    x = torch.flip(x, [1, ])
+                if np.random.rand() < 0.5:
+                    x = torch.flip(x, [2, ])
+
+            return {"input": x, "parameters": y}
+
+        def __len__(self):
+            return len(self.data)
+
     if args.dataset_field is not None:
 
         if not os.path.exists(args.cache_dir):
@@ -445,30 +466,46 @@ def main(args):
         X = 2 * (X - np.min(X) - d / 2) / d
         X = np.expand_dims(X, 1)
 
-        class CustomDataset(Dataset):
-            def __init__(self, data, parameters, train=True):
-                self.data = torch.from_numpy(data)
-                self.parameters = torch.from_numpy(parameters)
-                self.train = train
+        dataset = CustomDataset(X, Y, augment=True)
 
-            def __getitem__(self, index):
-                x = self.data[index]
-                y = self.parameters[index]
+    elif args.dataset_name == 'dsprites':
 
-                if self.train and args.random_flip:
-                    if np.random.rand() < 0.5:
-                        x = torch.flip(x, [1, ])
-                    if np.random.rand() < 0.5:
-                        x = torch.flip(x, [2, ])
+        if not os.path.exists(args.cache_dir):
+            os.makedirs(args.cache_dir)
 
-                return {"input": x, "parameters": y}
+        if not os.path.isfile(os.path.join(args.cache_dir, 'dsprites.npy')):
+            urllib.request.urlretrieve(
+                'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true',
+                os.path.join(args.cache_dir, 'dsprites.npy')
+            )
 
-            def __len__(self):
-                return len(self.data)
+        d = np.load(os.path.join(args.cache_dir, 'dsprites.npy'))
+        imgs = d['imgs']
+        latents_values = d['latents_values']
 
-        dataset = CustomDataset(X, Y, train=True)
+        if args.data_size is not None:
+            np.random.seed(0)
+            idx = np.random.randint(0, high=len(imgs), size=args.data_size)
+        else:
+            idx = np.arange(len(imgs))
+        X = []
+        Y = []
+        for i in idx:
+            X.append(imgs[i])
+            Y.append([latents_values[i, 2], latents_values[i, 3]])
+        X = np.array(X).astype(np.float32)
+        Y = np.array(Y).astype(np.float32)
 
-        logger.info(f"Dataset size: {len(dataset)}")
+        minimum = np.min(Y, axis=0)
+        maximum = np.max(Y, axis=0)
+        Y = (Y - minimum) / (maximum - minimum)
+        Y = np.expand_dims(Y, 1)
+
+        d = np.max(X) - np.min(X)
+        X = 2 * (X - np.min(X) - d / 2) / d
+        X = np.expand_dims(X, 1)
+
+        dataset = CustomDataset(X, Y, augment=False)
 
     else:
 
@@ -500,9 +537,9 @@ def main(args):
             images = [augmentations(image.convert("RGB")) for image in examples["image"]]
             return {"input": images}
 
-        logger.info(f"Dataset size: {len(dataset)}")
-
         dataset.set_transform(transform_images)
+
+    logger.info(f"Dataset size: {len(dataset)}")
 
     num_channels = dataset[0]["input"].size()[0]
 
