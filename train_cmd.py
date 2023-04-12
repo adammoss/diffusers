@@ -30,6 +30,8 @@ from diffusers.training_utils import EMAModel
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
+from pipeline import DDPMConditionPipeline
+
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.15.0.dev0")
@@ -529,7 +531,7 @@ def main(args):
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
-                ),
+                )
             )
         else:
             model = UNetModel(
@@ -558,6 +560,8 @@ def main(args):
     else:
         config = UNetModel.load_config(args.model_config_name_or_path)
         model = UNetModel.from_config(config)
+
+    accelerator.print('Number of parameters: %s' % sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     # Create EMA for the model.
     if args.use_ema:
@@ -752,7 +756,7 @@ def main(args):
                     ema_model.store(unet.parameters())
                     ema_model.copy_to(unet.parameters())
 
-                pipeline = DDPMPipeline(
+                pipeline = DDPMConditionPipeline(
                     unet=unet,
                     scheduler=noise_scheduler,
                 )
@@ -793,7 +797,7 @@ def main(args):
                     ema_model.store(unet.parameters())
                     ema_model.copy_to(unet.parameters())
 
-                pipeline = DDPMPipeline(
+                pipeline = DDPMConditionPipeline(
                     unet=unet,
                     scheduler=noise_scheduler,
                 )
