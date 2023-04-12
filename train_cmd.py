@@ -70,11 +70,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--dataset_field",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
         "--dataset_config_name",
         type=str,
         default=None,
@@ -291,7 +286,7 @@ def parse_args():
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
 
-    if args.dataset_field is None and args.dataset_name is None and args.train_data_dir is None:
+    if args.dataset_name is None and args.train_data_dir is None:
         raise ValueError("You must specify either a dataset name from the hub or a train data directory.")
 
     return args
@@ -425,20 +420,20 @@ def main(args):
         def __len__(self):
             return len(self.data)
 
-    if args.dataset_field is not None:
+    if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
 
         if not os.path.exists(args.cache_dir):
             os.makedirs(args.cache_dir)
 
-        if not os.path.isfile(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)):
+        if not os.path.isfile(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)):
             urllib.request.urlretrieve(
-                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_field,
-                os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)
+                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_name,
+                os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)
             )
 
-        if 'simba' in args.dataset_field.lower():
+        if 'simba' in args.dataset_name.lower():
             parameter_file = 'params_SIMBA.txt'
-        elif 'illustris' in args.dataset_field.lower():
+        elif 'illustris' in args.dataset_name.lower():
             parameter_file = 'params_IllustrisTNG.txt'
 
         if not os.path.isfile(os.path.join(args.cache_dir, parameter_file)):
@@ -456,7 +451,7 @@ def main(args):
         Y = (Y - minimum) / (maximum - minimum)
         Y = np.expand_dims(Y, 1)
 
-        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_field)).astype(np.float32)
+        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)).astype(np.float32)
         if args.data_size is not None:
             X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
         else:
