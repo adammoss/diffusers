@@ -763,12 +763,21 @@ def main(args):
 
                 generator = torch.Generator(device=pipeline.device).manual_seed(0)
                 # run pipeline in inference (sample random noise and denoise)
-                images = pipeline(
-                    generator=generator,
-                    batch_size=args.eval_batch_size,
-                    num_inference_steps=args.ddpm_num_inference_steps,
-                    output_type="numpy",
-                ).images
+                if args.conditional:
+                    images = pipeline(
+                        generator=generator,
+                        batch_size=args.eval_batch_size,
+                        num_inference_steps=args.ddpm_num_inference_steps,
+                        output_type="numpy",
+                        encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1]
+                    ).images
+                else:
+                    images = pipeline(
+                        generator=generator,
+                        batch_size=args.eval_batch_size,
+                        num_inference_steps=args.ddpm_num_inference_steps,
+                        output_type="numpy",
+                    ).images
 
                 if args.use_ema:
                     ema_model.restore(unet.parameters())
