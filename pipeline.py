@@ -71,9 +71,14 @@ class DDPMConditionPipeline(DiffusionPipeline):
         # set encoder hidden states
         if encoder_hidden_states is not None:
             encoder_hidden_states = np.array(encoder_hidden_states, dtype=np.float32)
-            encoder_hidden_states = np.expand_dims(encoder_hidden_states, 0)
-            encoder_hidden_states = np.repeat(encoder_hidden_states, batch_size, axis=0)
-            encoder_hidden_states = np.expand_dims(encoder_hidden_states, 1)
+            if len(encoder_hidden_states.shape) == 1:
+                encoder_hidden_states = np.expand_dims(encoder_hidden_states, 0)
+                encoder_hidden_states = np.repeat(encoder_hidden_states, batch_size, axis=0)
+                encoder_hidden_states = np.expand_dims(encoder_hidden_states, 1)
+            elif len(encoder_hidden_states.shape) == 2 and encoder_hidden_states.shape[0] == batch_size:
+                encoder_hidden_states = np.expand_dims(encoder_hidden_states, 1)
+            else:
+                raise ValueError('Incorrect shape for encoder hidden states')
             encoder_hidden_states = torch.from_numpy(encoder_hidden_states).to(self.device)
 
         for t in self.progress_bar(self.scheduler.timesteps):
