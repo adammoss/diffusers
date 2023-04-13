@@ -2,6 +2,7 @@ import argparse
 import inspect
 import logging
 import math
+import time
 import os
 from pathlib import Path
 from typing import Optional
@@ -94,7 +95,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="ddpm-model-64",
+        default="output/ddpm",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument("--overwrite_output_dir", action="store_true")
@@ -303,6 +304,16 @@ def get_full_repo_name(model_id: str, organization: Optional[str] = None, token:
 
 
 def main(args):
+    if args.output_dir == "output/ddpm":
+        # Default output
+        if args.use_ema:
+            args.output_dir += "-ema"
+        args.output_dir += '-%s' % args.resolution
+        args.output_dir += '-' + args.dataset_name.replace("_", "-")
+        if args.conditional:
+            args.output_dir += "-cond"
+        args.output_dir += '-%s' % int(time.time())
+
     logging_dir = os.path.join(args.output_dir, args.logging_dir)
 
     accelerator_project_config = ProjectConfiguration(total_limit=args.checkpoints_total_limit)
