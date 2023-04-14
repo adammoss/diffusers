@@ -6,9 +6,7 @@ import time
 import os
 from pathlib import Path
 from typing import Optional
-import urllib
 import numpy as np
-from skimage.transform import resize
 
 import accelerate
 import datasets
@@ -32,6 +30,7 @@ from diffusers.utils import check_min_version, is_accelerate_version, is_tensorb
 from diffusers.utils.import_utils import is_xformers_available
 
 from pipeline import DDPMConditionPipeline
+from data import get_cmd_dataset, get_dsprites_dataset
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -433,84 +432,13 @@ def main(args):
 
     if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
 
-        if not os.path.exists(args.cache_dir):
-            os.makedirs(args.cache_dir)
-
-        if not os.path.isfile(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)):
-            urllib.request.urlretrieve(
-                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_name,
-                os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)
-            )
-
-        if 'simba' in args.dataset_name.lower():
-            parameter_file = 'params_SIMBA.txt'
-        elif 'illustris' in args.dataset_name.lower():
-            parameter_file = 'params_IllustrisTNG.txt'
-
-        if not os.path.isfile(os.path.join(args.cache_dir, parameter_file)):
-            urllib.request.urlretrieve(
-                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file,
-                os.path.join(args.cache_dir, parameter_file)
-            )
-
-        Y = np.loadtxt(os.path.join(args.cache_dir, parameter_file)).astype(np.float32)
-        Y = np.repeat(Y, 15, axis=0)
-        if args.data_size is not None:
-            Y = np.array([params for params in Y[0:args.data_size]])
-        minimum = np.min(Y, axis=0)
-        maximum = np.max(Y, axis=0)
-        Y = (Y - minimum) / (maximum - minimum)
-        Y = np.expand_dims(Y, 1)
-
-        X = np.load(os.path.join(args.cache_dir, 'Maps_%s_LH_z=0.00.npy' % args.dataset_name)).astype(np.float32)
-        if args.data_size is not None:
-            X = np.array([resize(img, (args.resolution, args.resolution)) for img in X[0:args.data_size]])
-        else:
-            X = np.array([resize(img, (args.resolution, args.resolution)) for img in X])
-        X = np.log(X)
-        d = np.max(X) - np.min(X)
-        X = 2 * (X - np.min(X) - d / 2) / d
-        X = np.expand_dims(X, 1)
-
+        X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
+                               data_size=args.data_size, transform=np.log)
         dataset = CustomDataset(X, Y, augment=True)
 
     elif args.dataset_name == 'dsprites':
 
-        if not os.path.exists(args.cache_dir):
-            os.makedirs(args.cache_dir)
-
-        if not os.path.isfile(os.path.join(args.cache_dir, 'dsprites.npy')):
-            urllib.request.urlretrieve(
-                'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true',
-                os.path.join(args.cache_dir, 'dsprites.npy')
-            )
-
-        d = np.load(os.path.join(args.cache_dir, 'dsprites.npy'))
-        imgs = d['imgs']
-        latents_values = d['latents_values']
-
-        if args.data_size is not None:
-            np.random.seed(0)
-            idx = np.random.randint(0, high=len(imgs), size=args.data_size)
-        else:
-            idx = np.arange(len(imgs))
-        X = []
-        Y = []
-        for i in idx:
-            X.append(imgs[i])
-            Y.append([latents_values[i, 2], latents_values[i, 3]])
-        X = np.array(X).astype(np.float32)
-        Y = np.array(Y).astype(np.float32)
-
-        minimum = np.min(Y, axis=0)
-        maximum = np.max(Y, axis=0)
-        Y = (Y - minimum) / (maximum - minimum)
-        Y = np.expand_dims(Y, 1)
-
-        d = np.max(X) - np.min(X)
-        X = 2 * (X - np.min(X) - d / 2) / d
-        X = np.expand_dims(X, 1)
-
+        X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size= args.data_size)
         dataset = CustomDataset(X, Y, augment=False)
 
     else:
