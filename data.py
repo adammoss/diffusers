@@ -11,7 +11,7 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
 
     if not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
         urllib.request.urlretrieve(
-            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % args.dataset_name,
+            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name,
             os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)
         )
 
