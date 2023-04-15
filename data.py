@@ -41,8 +41,10 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
     if resolution is not None:
         X = np.array([resize(img, (resolution, resolution)) for img in X])
     X = transform(X)
-    d = np.max(X) - np.min(X)
-    X = 2 * (X - np.min(X) - d / 2) / d
+    minimum = np.min(X, axis=0)
+    maximum = np.max(X, axis=0)
+    X = (X - minimum) / (maximum - minimum)
+    X = 2 * X - 1
     X = np.expand_dims(X, 1)
 
     return X, Y
@@ -80,8 +82,10 @@ def get_dsprites_dataset(cache_dir='.', data_size=None):
     Y = (Y - minimum) / (maximum - minimum)
     Y = np.expand_dims(Y, 1)
 
-    d = np.max(X) - np.min(X)
-    X = 2 * (X - np.min(X) - d / 2) / d
+    minimum = np.min(X, axis=0)
+    maximum = np.max(X, axis=0)
+    X = (X - minimum) / (maximum - minimum)
+    X = 2 * X - 1
     X = np.expand_dims(X, 1)
 
     return X, Y
