@@ -8,3 +8,4 @@ wandb
 tensorboard
 scikit-image
 xformers
+quantimpy
