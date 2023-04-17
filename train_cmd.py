@@ -246,8 +246,8 @@ def parse_args():
         choices=["epsilon", "sample"],
         help="Whether the model should predict the 'epsilon'/noise error or directly the reconstructed image 'x0'.",
     )
-    parser.add_argument("--ddpm_num_steps", type=int, default=2000)
-    parser.add_argument("--ddpm_num_inference_steps", type=int, default=2000)
+    parser.add_argument("--ddpm_num_steps", type=int, default=1000)
+    parser.add_argument("--ddpm_num_inference_steps", type=int, default=1000)
     parser.add_argument("--ddpm_beta_schedule", type=str, default="linear")
     parser.add_argument(
         "--checkpointing_steps",
