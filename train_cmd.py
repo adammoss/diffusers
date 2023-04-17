@@ -433,12 +433,12 @@ def main(args):
     if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
 
         X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
-                               data_size=args.data_size, transform=np.log)
+                               data_size=args.data_size, transform=np.log, accelerator=accelerator)
         dataset = CustomDataset(X, Y, augment=True)
 
     elif args.dataset_name == 'dsprites':
 
-        X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size= args.data_size)
+        X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size= args.data_size, accelerator=accelerator)
         dataset = CustomDataset(X, Y, augment=False)
 
     else:

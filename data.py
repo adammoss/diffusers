@@ -5,26 +5,31 @@ import numpy as np
 from skimage.transform import resize
 
 
-def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log):
+def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log, accelerator=None):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
-    if not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
-        urllib.request.urlretrieve(
-            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name,
-            os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)
-        )
+    if accelerator is None or accelerator.is_main_process:
 
-    if 'simba' in dataset_name.lower():
-        parameter_file = 'params_SIMBA.txt'
-    elif 'illustris' in dataset_name.lower():
-        parameter_file = 'params_IllustrisTNG.txt'
+        if not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
+            urllib.request.urlretrieve(
+                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name,
+                os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)
+            )
 
-    if not os.path.isfile(os.path.join(cache_dir, parameter_file)):
-        urllib.request.urlretrieve(
-            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file,
-            os.path.join(cache_dir, parameter_file)
-        )
+        if 'simba' in dataset_name.lower():
+            parameter_file = 'params_SIMBA.txt'
+        elif 'illustris' in dataset_name.lower():
+            parameter_file = 'params_IllustrisTNG.txt'
+
+        if not os.path.isfile(os.path.join(cache_dir, parameter_file)):
+            urllib.request.urlretrieve(
+                'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file,
+                os.path.join(cache_dir, parameter_file)
+            )
+
+    if accelerator is not None:
+        accelerator.wait_for_everyone()
 
     Y = np.loadtxt(os.path.join(cache_dir, parameter_file)).astype(np.float32)
     Y = np.repeat(Y, 15, axis=0)
@@ -50,16 +55,20 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
     return X, Y
 
 
-def get_dsprites_dataset(cache_dir='.', data_size=None):
-
+def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
-    if not os.path.isfile(os.path.join(cache_dir, 'dsprites.npy')):
-        urllib.request.urlretrieve(
-            'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true',
-            os.path.join(cache_dir, 'dsprites.npy')
-        )
+    if accelerator is None or accelerator.is_main_process:
+
+        if not os.path.isfile(os.path.join(cache_dir, 'dsprites.npy')):
+            urllib.request.urlretrieve(
+                'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true',
+                os.path.join(cache_dir, 'dsprites.npy')
+            )
+
+    if accelerator is not None:
+        accelerator.wait_for_everyone()
 
     d = np.load(os.path.join(cache_dir, 'dsprites.npy'))
     imgs = d['imgs']
