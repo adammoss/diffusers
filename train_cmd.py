@@ -246,6 +246,12 @@ def parse_args():
         choices=["epsilon", "sample"],
         help="Whether the model should predict the 'epsilon'/noise error or directly the reconstructed image 'x0'.",
     )
+    parser.add_argument(
+        "--loss",
+        type=str,
+        default="mse",
+        choices=["mse", "huber"],
+    )
     parser.add_argument("--ddpm_num_steps", type=int, default=1000)
     parser.add_argument("--ddpm_num_inference_steps", type=int, default=1000)
     parser.add_argument("--ddpm_beta_schedule", type=str, default="linear")
@@ -675,7 +681,10 @@ def main(args):
                     model_output = model(noisy_images, timesteps).sample
 
                 if args.prediction_type == "epsilon":
-                    loss = F.mse_loss(model_output, noise)  # this could have different weights!
+                    if args.loss == 'mse':
+                        loss = F.mse_loss(model_output, noise)  # this could have different weights!
+                    elif args.loss == 'huber':
+                        loss = F.huber_loss(model_output, noise)
                 elif args.prediction_type == "sample":
                     alpha_t = _extract_into_tensor(
                         noise_scheduler.alphas_cumprod, timesteps, (clean_images.shape[0], 1, 1, 1)
