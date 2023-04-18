@@ -51,7 +51,7 @@ def _extract_into_tensor(arr, timesteps, broadcast_shape):
     """
     if not isinstance(arr, torch.Tensor):
         arr = torch.from_numpy(arr)
-    res = arr[timesteps].float().to(timesteps.device)
+    res = arr[timesteps.cpu()].float().to(timesteps.device)
     while len(res.shape) < len(broadcast_shape):
         res = res[..., None]
     return res.expand(broadcast_shape)
