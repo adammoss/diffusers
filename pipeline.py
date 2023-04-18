@@ -31,6 +31,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         output_type: Optional[str] = "pil",
         return_dict: bool = True,
         encoder_hidden_states: List[float] = None,
+        image: Optional[torch.FloatTensor] = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -52,18 +53,21 @@ class DDPMConditionPipeline(DiffusionPipeline):
             [`~pipelines.ImagePipelineOutput`] or `tuple`: [`~pipelines.utils.ImagePipelineOutput`] if `return_dict` is
             True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
-        # Sample gaussian noise to begin loop
-        if isinstance(self.unet.sample_size, int):
-            image_shape = (batch_size, self.unet.in_channels, self.unet.sample_size, self.unet.sample_size)
-        else:
-            image_shape = (batch_size, self.unet.in_channels, *self.unet.sample_size)
 
-        if self.device.type == "mps":
-            # randn does not work reproducibly on mps
-            image = randn_tensor(image_shape, generator=generator)
-            image = image.to(self.device)
-        else:
-            image = randn_tensor(image_shape, generator=generator, device=self.device)
+        if image is None:
+
+            # Sample gaussian noise to begin loop
+            if isinstance(self.unet.sample_size, int):
+                image_shape = (batch_size, self.unet.in_channels, self.unet.sample_size, self.unet.sample_size)
+            else:
+                image_shape = (batch_size, self.unet.in_channels, *self.unet.sample_size)
+
+            if self.device.type == "mps":
+                # randn does not work reproducibly on mps
+                image = randn_tensor(image_shape, generator=generator)
+                image = image.to(self.device)
+            else:
+                image = randn_tensor(image_shape, generator=generator, device=self.device)
 
         # set step values
         self.scheduler.set_timesteps(num_inference_steps)
