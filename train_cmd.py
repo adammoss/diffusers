@@ -243,7 +243,7 @@ def parse_args():
         "--prediction_type",
         type=str,
         default="epsilon",
-        choices=["epsilon", "sample"],
+        choices=["epsilon", "sample", "v_prediction"],
         help="Whether the model should predict the 'epsilon'/noise error or directly the reconstructed image 'x0'.",
     )
     parser.add_argument(
@@ -694,6 +694,9 @@ def main(args):
                         model_output, clean_images, reduction="none"
                     )  # use SNR weighting from distillation paper
                     loss = loss.mean()
+                elif args.prediction_type == "v_prediction":
+                    target = noise_scheduler.get_velocity(clean_images, noise, timesteps)
+                    loss = F.mse_loss(model_output, target)
                 else:
                     raise ValueError(f"Unsupported prediction type: {args.prediction_type}")
 
