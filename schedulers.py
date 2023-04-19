@@ -7,7 +7,7 @@ from diffusers.schedulers.scheduling_repaint import RePaintSchedulerOutput
 from diffusers.utils import randn_tensor
 
 
-class RepaintScheduler(RePaintSchedulerBase):
+class RePaintScheduler(RePaintSchedulerBase):
 
     def step(
             self,

@@ -29,7 +29,7 @@ from diffusers.training_utils import EMAModel
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
-from pipeline import DDPMConditionPipeline
+from pipelines import DDPMConditionPipeline
 from data import get_cmd_dataset, get_dsprites_dataset
 
 

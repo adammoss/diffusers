@@ -2,8 +2,8 @@ import torch
 
 from diffusers import RePaintPipeline
 
-from pipeline import DDPMConditionPipeline
-from repaint_scheduler import RePaintScheduler
+from pipelines import DDPMConditionPipeline
+from schedulers import RePaintScheduler
 
 
 def generate_samples(model, batch_size, device=None):
