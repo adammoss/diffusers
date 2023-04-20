@@ -18,12 +18,12 @@ def runs(c, dataset='', token='', resolution=128, timesteps=4000, conditional=Fa
         if conditional:
             c.run('/home/ubuntu/.local/bin/accelerate launch train.py --dataset_name=%s --resolution=%s '
                   '--data_size=13500 --train_batch_size=32 --gradient_accumulation_steps=1 '
-                  '--ddpm_num_steps=%s --ddpm_num_inference_steps=%s '
+                  '--ddpm_num_steps=%s --ddpm_num_inference_steps=%s --conditional '
                   '--cache_dir="data" --checkpointing_steps=10000 --use_ema --prediction_type sample '
                   '--push_to_hub --hub_token=%s' % (dataset, resolution, timesteps, timesteps, token))
         else:
             c.run('/home/ubuntu/.local/bin/accelerate launch train.py --dataset_name=%s --resolution=%s '
                   '--data_size=13500 --train_batch_size=32 --gradient_accumulation_steps=1 '
-                  '--ddpm_num_steps=%s --ddpm_num_inference_steps=%s --conditional '
+                  '--ddpm_num_steps=%s --ddpm_num_inference_steps=%s '
                   '--cache_dir="data" --checkpointing_steps=10000 --use_ema --prediction_type sample '
                   '--push_to_hub --hub_token=%s' % (dataset, resolution, timesteps, timesteps, token))
