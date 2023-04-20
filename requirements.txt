@@ -9,3 +9,4 @@ tensorboard
 scikit-image
 xformers
 quantimpy
+fabric3
