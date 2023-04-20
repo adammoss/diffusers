@@ -430,6 +430,9 @@ def main(args):
                     x = torch.flip(x, [1, ])
                 if np.random.rand() < 0.5:
                     x = torch.flip(x, [2, ])
+                k = np.random.choice([0, 1, 2, 3])
+                if k > 0:
+                    x = torch.rot90(x, k=k, dims=[1, 2])
 
             return {"input": x, "parameters": y}
 
