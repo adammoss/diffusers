@@ -13,7 +13,7 @@ def install(c):
 
 
 @task
-def runs(c, dataset='', token='', resolution=128, timesteps=4000, conditional=False):
+def run(c, dataset='', token='', resolution=128, timesteps=4000, conditional=False):
     with c.cd('diffusers'):
         if conditional:
             c.run('/home/ubuntu/.local/bin/accelerate launch train.py --dataset_name=%s --resolution=%s '
