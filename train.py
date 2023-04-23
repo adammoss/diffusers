@@ -521,6 +521,8 @@ def main(args):
     else:
         conditional_channels = 0
 
+    print(conditional_channels)
+
     train_dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
