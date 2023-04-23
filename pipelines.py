@@ -55,13 +55,21 @@ class DDPMConditionPipeline(DiffusionPipeline):
             True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
 
+        if conditional_image is not None:
+            if len(conditional_image.size()) == 3:
+                conditional_image = conditional_image.unsqueeze(0)
+                conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)
+            conditional_channels = conditional_image.size()[1]
+        else:
+            conditional_channels = 0
+
         if image is None:
 
             # Sample gaussian noise to begin loop
             if isinstance(self.unet.sample_size, int):
-                image_shape = (batch_size, self.unet.in_channels, self.unet.sample_size, self.unet.sample_size)
+                image_shape = (batch_size, self.unet.in_channels - conditional_channels, self.unet.sample_size, self.unet.sample_size)
             else:
-                image_shape = (batch_size, self.unet.in_channels, *self.unet.sample_size)
+                image_shape = (batch_size, self.unet.in_channels - conditional_channels, *self.unet.sample_size)
 
             if self.device.type == "mps":
                 # randn does not work reproducibly on mps
@@ -71,13 +79,6 @@ class DDPMConditionPipeline(DiffusionPipeline):
                 image = randn_tensor(image_shape, generator=generator, device=self.device)
 
         if conditional_image is not None:
-            print(conditional_image.size())
-            if len(conditional_image.size()) == 3:
-                conditional_image = conditional_image.unsqueeze(0)
-                conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)
-            print(conditional_image.size())
-            print(image.size())
-            conditional_image = conditional_image.to(self.device)
             image = torch.cat((image, conditional_image), axis=1)
             print(image.size())
 
