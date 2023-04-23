@@ -76,6 +76,11 @@ def parse_args():
         help="The config of the Dataset, leave as None if there's only one config.",
     )
     parser.add_argument(
+        "--dataset_conditional_name",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
         "--model_config_name_or_path",
         type=str,
         default=None,
@@ -462,7 +467,11 @@ def main(args):
 
         X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
                                data_size=args.data_size, transform=np.log, accelerator=accelerator)
-        if args.super_resolution is not None:
+        if args.dataset_conditional_name is not None:
+            X_conditional, Y_conditional = get_cmd_dataset(args.dataset_conditional_name, cache_dir=args.cache_dir,
+                                                           resolution=args.resolution, data_size=args.data_size,
+                                                           transform=np.log, accelerator=accelerator)
+        elif args.super_resolution is not None:
             X_conditional = get_low_resolution(X, args.super_resolution)
         else:
             X_conditional = None
