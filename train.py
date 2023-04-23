@@ -517,6 +517,7 @@ def main(args):
     out_channels = d["input"].size()[0]
     if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
+        conditional_test = d["conditional_input"]
     else:
         conditional_channels = 0
 
@@ -710,8 +711,8 @@ def main(args):
             # (this is the forward diffusion process)
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
 
-            if "input_conditional" in batch:
-                noisy_images = torch.cat((noisy_images, batch["input_conditional"]), dim=1)
+            if "conditional_input" in batch:
+                noisy_images = torch.cat((noisy_images, batch["conditional_input"]), dim=1)
                 print(noisy_images.size())
 
             with accelerator.accumulate(model):
@@ -796,12 +797,21 @@ def main(args):
                         encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1]
                     ).images
                 else:
-                    images = pipeline(
-                        generator=generator,
-                        batch_size=args.eval_batch_size,
-                        num_inference_steps=args.ddpm_num_inference_steps,
-                        output_type="numpy",
-                    ).images
+                    if "conditional_input" in batch:
+                        images = pipeline(
+                            generator=generator,
+                            batch_size=args.eval_batch_size,
+                            num_inference_steps=args.ddpm_num_inference_steps,
+                            output_type="numpy",
+                            conditional_image=conditional_test,
+                        ).images
+                    else:
+                        images = pipeline(
+                            generator=generator,
+                            batch_size=args.eval_batch_size,
+                            num_inference_steps=args.ddpm_num_inference_steps,
+                            output_type="numpy",
+                        ).images
 
                 if args.use_ema:
                     ema_model.restore(unet.parameters())

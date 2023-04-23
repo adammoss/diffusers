@@ -32,6 +32,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         return_dict: bool = True,
         encoder_hidden_states: List[float] = None,
         image: Optional[torch.FloatTensor] = None,
+        conditional_image: Optional[torch.FloatTensor] = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -68,6 +69,13 @@ class DDPMConditionPipeline(DiffusionPipeline):
                 image = image.to(self.device)
             else:
                 image = randn_tensor(image_shape, generator=generator, device=self.device)
+
+        if conditional_image is not None:
+            if len(conditional_image.size()) == 3:
+                conditional_image = conditional_image.unsqueeze(0)
+                conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)
+            conditional_image = conditional_image.to(self.device)
+            image = torch.cat((image, conditional_image), axis=1)
 
         # set step values
         self.scheduler.set_timesteps(num_inference_steps)
