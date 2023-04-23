@@ -74,8 +74,11 @@ class DDPMConditionPipeline(DiffusionPipeline):
             if len(conditional_image.size()) == 3:
                 conditional_image = conditional_image.unsqueeze(0)
                 conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)
+            print(conditional_image.size())
+            print(image.size())
             conditional_image = conditional_image.to(self.device)
             image = torch.cat((image, conditional_image), axis=1)
+            print(image.size())
 
         # set step values
         self.scheduler.set_timesteps(num_inference_steps)
