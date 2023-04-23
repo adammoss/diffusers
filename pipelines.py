@@ -71,6 +71,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
                 image = randn_tensor(image_shape, generator=generator, device=self.device)
 
         if conditional_image is not None:
+            print(conditional_image.size())
             if len(conditional_image.size()) == 3:
                 conditional_image = conditional_image.unsqueeze(0)
                 conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)

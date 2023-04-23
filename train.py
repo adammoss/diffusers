@@ -518,6 +518,7 @@ def main(args):
     if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
         conditional_test = d["conditional_input"]
+        print(conditional_test.size())
     else:
         conditional_channels = 0
 
