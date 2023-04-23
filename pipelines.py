@@ -79,10 +79,6 @@ class DDPMConditionPipeline(DiffusionPipeline):
             else:
                 image = randn_tensor(image_shape, generator=generator, device=self.device)
 
-        if conditional_image is not None:
-            image = torch.cat((image, conditional_image), axis=1)
-            print(image.size())
-
         # set step values
         self.scheduler.set_timesteps(num_inference_steps)
 
@@ -101,10 +97,16 @@ class DDPMConditionPipeline(DiffusionPipeline):
 
         for t in self.progress_bar(self.scheduler.timesteps):
             # 1. predict noise model_output
-            if encoder_hidden_states is not None:
-                model_output = self.unet(image, t, encoder_hidden_states).sample
+            if conditional_image is not None:
+                if encoder_hidden_states is not None:
+                    model_output = self.unet(torch.cat((image, conditional_image), axis=1), t, encoder_hidden_states).sample
+                else:
+                    model_output = self.unet(torch.cat((image, conditional_image), axis=1), t).sample
             else:
-                model_output = self.unet(image, t).sample
+                if encoder_hidden_states is not None:
+                    model_output = self.unet(image, t, encoder_hidden_states).sample
+                else:
+                    model_output = self.unet(image, t).sample
 
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
