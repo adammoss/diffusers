@@ -2,7 +2,7 @@ import os
 import urllib
 
 import numpy as np
-from skimage.transform import resize
+from skimage.transform import resize, downscale_local_mean, resize_local_mean
 
 
 def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log, accelerator=None):
@@ -98,3 +98,11 @@ def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None):
     X = np.expand_dims(X, 1)
 
     return X, Y
+
+
+def get_low_resolution(X, factor):
+    shape = X.shape
+    if len(shape) == 4:
+        X_down = [downscale_local_mean(img, (shape[1], factor, factor)) for img in X]
+        X_up = [resize_local_mean(img, output_shape=(shape[2], shape[3]), channel_axis=0) for img in X_down]
+    return np.array(X_up).astype(np.float32)

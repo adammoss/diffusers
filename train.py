@@ -30,7 +30,7 @@ from diffusers.utils import check_min_version, is_accelerate_version, is_tensorb
 from diffusers.utils.import_utils import is_xformers_available
 
 from pipelines import DDPMConditionPipeline
-from data import get_cmd_dataset, get_dsprites_dataset
+from data import get_cmd_dataset, get_dsprites_dataset, get_low_resolution
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -115,6 +115,11 @@ def parse_args():
     )
     parser.add_argument(
         "--data_size",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--super_resolution",
         type=int,
         default=None,
     )
@@ -416,25 +421,39 @@ def main(args):
     # download the dataset.
 
     class CustomDataset(Dataset):
-        def __init__(self, data, parameters, augment=True):
+        def __init__(self, data, parameters, data_conditional=None, augment=True):
             self.data = torch.from_numpy(data)
             self.parameters = torch.from_numpy(parameters)
             self.augment = augment
+            if data_conditional is not None:
+                self.data_conditional = torch.from_numpy(data_conditional)
+            else:
+                self.data_conditional = None
 
         def __getitem__(self, index):
             x = self.data[index]
             y = self.parameters[index]
+            if self.data_conditional is not None:
+                x_conditional = self.data_conditional[index]
+            else:
+                x_conditional = None
 
             if self.augment:
                 if np.random.rand() < 0.5:
                     x = torch.flip(x, [1, ])
+                    if x_conditional is not None:
+                        x_conditional = torch.flip(x_conditional, [1, ])
                 if np.random.rand() < 0.5:
                     x = torch.flip(x, [2, ])
+                    if x_conditional is not None:
+                        x_conditional = torch.flip(x_conditional, [2, ])
                 k = np.random.choice([0, 1, 2, 3])
                 if k > 0:
                     x = torch.rot90(x, k=k, dims=[1, 2])
+                    if x_conditional is not None:
+                        x_conditional = torch.rot90(x_conditional, k=k, dims=[1, 2])
 
-            return {"input": x, "parameters": y}
+            return {"input": x, "parameters": y, "conditional_input": x_conditional}
 
         def __len__(self):
             return len(self.data)
@@ -443,12 +462,20 @@ def main(args):
 
         X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
                                data_size=args.data_size, transform=np.log, accelerator=accelerator)
-        dataset = CustomDataset(X, Y, augment=True)
+        if args.super_resolution is not None:
+            X_conditional = get_low_resolution(X, args.super_resolution)
+        else:
+            X_conditional = None
+        dataset = CustomDataset(X, Y, augment=True, data_conditional=X_conditional)
 
     elif args.dataset_name == 'dsprites':
 
         X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size= args.data_size, accelerator=accelerator)
-        dataset = CustomDataset(X, Y, augment=False)
+        if args.super_resolution is not None:
+            X_conditional = get_low_resolution(X, args.super_resolution)
+        else:
+            X_conditional = None
+        dataset = CustomDataset(X, Y, augment=False, data_conditional=X_conditional)
 
     else:
 
@@ -484,7 +511,14 @@ def main(args):
 
     logger.info(f"Dataset size: {len(dataset)}")
 
-    num_channels = dataset[0]["input"].size()[0]
+    d = dataset[0]
+
+    in_channels = d["input"].size()[0]
+    out_channels = d["input"].size()[0]
+    if "conditional_input" in d:
+        conditional_channels = d["conditional_input"].size()[0]
+    else:
+        conditional_channels = 0
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
@@ -495,8 +529,8 @@ def main(args):
         if args.conditional:
             model = UNetModel(
                 sample_size=args.resolution,
-                in_channels=num_channels,
-                out_channels=num_channels,
+                in_channels=in_channels + conditional_channels,
+                out_channels=out_channels,
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
                 block_out_channels=(128, 256, 512, 512),
                 cross_attention_dim=512,
@@ -516,8 +550,8 @@ def main(args):
         else:
             model = UNetModel(
                 sample_size=args.resolution,
-                in_channels=num_channels,
-                out_channels=num_channels,
+                in_channels=in_channels,
+                out_channels=out_channels,
                 layers_per_block=2,
                 block_out_channels=(128, 128, 256, 256, 512, 512),
                 down_block_types=(
@@ -675,6 +709,10 @@ def main(args):
             # Add noise to the clean images according to the noise magnitude at each timestep
             # (this is the forward diffusion process)
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+
+            if "input_conditional" in batch:
+                noisy_images = torch.cat((noisy_images, batch["input_conditional"]), dim=1)
+                print(noisy_images.size())
 
             with accelerator.accumulate(model):
                 # Predict the noise residual
