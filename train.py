@@ -713,7 +713,6 @@ def main(args):
 
             if "conditional_input" in batch:
                 noisy_images = torch.cat((noisy_images, batch["conditional_input"]), dim=1)
-                print(noisy_images.size())
 
             with accelerator.accumulate(model):
                 # Predict the noise residual
