@@ -521,8 +521,6 @@ def main(args):
     else:
         conditional_channels = 0
 
-    print(conditional_channels)
-
     train_dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
@@ -553,7 +551,7 @@ def main(args):
         else:
             model = UNetModel(
                 sample_size=args.resolution,
-                in_channels=in_channels,
+                in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 layers_per_block=2,
                 block_out_channels=(128, 128, 256, 256, 512, 512),
