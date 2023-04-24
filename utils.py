@@ -6,7 +6,7 @@ from pipelines import DDPMConditionPipeline
 from schedulers import RePaintScheduler
 
 
-def generate_samples(model, batch_size, device=None, num_inference_steps=None):
+def generate_samples(model, batch_size=1, device=None, num_inference_steps=None):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,7 +42,7 @@ def inpaint(model, images, mask, device=None, num_inference_steps=None):
     return images
 
 
-def upscale(model, images, device=None, num_inference_steps=None, batch_size=1):
+def img2img(model, images, device=None, num_inference_steps=None, batch_size=1):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -56,8 +56,3 @@ def upscale(model, images, device=None, num_inference_steps=None, batch_size=1):
         conditional_image=torch.from_numpy(images)
     ).images
     return images
-
-
-
-
-
