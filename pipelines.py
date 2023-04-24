@@ -59,6 +59,8 @@ class DDPMConditionPipeline(DiffusionPipeline):
             if len(conditional_image.size()) == 3:
                 conditional_image = conditional_image.unsqueeze(0)
                 conditional_image = conditional_image.repeat(batch_size, 1, 1, 1)
+            elif len(conditional_image.size()) == 4:
+                batch_size = conditional_image.size()[0]
             conditional_image = conditional_image.to(self.device)
             conditional_channels = conditional_image.size()[1]
         else:
