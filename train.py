@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Optional
 import numpy as np
+import json
 
 import accelerate
 import datasets
@@ -420,6 +421,10 @@ def main(args):
                     gitignore.write("step_*\n")
                 if "epoch_*" not in gitignore:
                     gitignore.write("epoch_*\n")
+
+            with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
+                json.dump(vars(args), file)
+
         elif args.output_dir is not None:
             os.makedirs(args.output_dir, exist_ok=True)
 
