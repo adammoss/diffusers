@@ -423,7 +423,7 @@ def main(args):
                     gitignore.write("epoch_*\n")
 
             with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
-                json.dump(vars(args), file)
+                json.dump(vars(args), file, indent=4)
 
         elif args.output_dir is not None:
             os.makedirs(args.output_dir, exist_ok=True)
