@@ -327,6 +327,10 @@ def main(args):
         args.output_dir += '-' + args.dataset_name.replace("_", "-")
         if args.conditional:
             args.output_dir += "-cond"
+        if args.super_resolution is not None:
+            args.output_dir += '-SR%s' % args.super_resolution
+        if args.dataset_conditional_name is not None:
+            args.output_dir += '-' + args.dataset_conditional_name.replace("_", "-")
         args.output_dir += '-%s' % int(time.time())
 
     logging_dir = os.path.join(args.output_dir, args.logging_dir)
