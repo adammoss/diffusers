@@ -483,7 +483,7 @@ def main(args):
 
     elif args.dataset_name == 'dsprites':
 
-        X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size= args.data_size, accelerator=accelerator)
+        X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size=args.data_size, accelerator=accelerator)
         if args.super_resolution is not None:
             X_conditional = get_low_resolution(X, args.super_resolution)
         else:
@@ -656,7 +656,7 @@ def main(args):
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
         run = os.path.split(__file__)[-1].split(".")[0]
-        accelerator.init_trackers(run, config=vars(args))
+        accelerator.init_trackers(run)
 
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
