@@ -42,6 +42,21 @@ def inpaint(model, images, mask, device=None, num_inference_steps=None):
     return images
 
 
+def upscale(model, images, device=None, num_inference_steps=None):
+    pipeline = DDPMConditionPipeline.from_pretrained(model)
+    if device is not None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        pipeline = pipeline.to(device)
+    if num_inference_steps is None:
+        num_inference_steps = pipeline.scheduler.num_train_timesteps
+    images = pipeline(
+        num_inference_steps=num_inference_steps,
+        output_type="numpy",
+        conditional_image=torch.from_numpy(images)
+    ).images
+    return images
+
+
 
 
 
