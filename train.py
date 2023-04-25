@@ -533,7 +533,7 @@ def main(args):
 
     in_channels = d["input"].size()[0]
     out_channels = d["input"].size()[0]
-    if "conditional_input" in d:
+    if "conditional_input" in d and d["conditional_input"] is not None:
         conditional_channels = d["conditional_input"].size()[0]
         conditional_test = d["conditional_input"]
     else:
@@ -729,7 +729,7 @@ def main(args):
             # (this is the forward diffusion process)
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
 
-            if "conditional_input" in batch:
+            if "conditional_input" in batch and batch["conditional_input"] is not None:
                 noisy_images = torch.cat((noisy_images, batch["conditional_input"]), dim=1)
 
             with accelerator.accumulate(model):
