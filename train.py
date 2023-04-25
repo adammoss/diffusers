@@ -467,7 +467,10 @@ def main(args):
                     if x_conditional is not None:
                         x_conditional = torch.rot90(x_conditional, k=k, dims=[1, 2])
 
-            return {"input": x, "parameters": y, "conditional_input": x_conditional}
+            if x_conditional is not None:
+                return {"input": x, "parameters": y, "conditional_input": x_conditional}
+            else:
+                return {"input": x, "parameters": y}
 
         def __len__(self):
             return len(self.data)
@@ -533,7 +536,7 @@ def main(args):
 
     in_channels = d["input"].size()[0]
     out_channels = d["input"].size()[0]
-    if "conditional_input" in d and d["conditional_input"] is not None:
+    if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
         conditional_test = d["conditional_input"]
     else:
@@ -729,7 +732,7 @@ def main(args):
             # (this is the forward diffusion process)
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
 
-            if "conditional_input" in batch and batch["conditional_input"] is not None:
+            if "conditional_input" in batch:
                 noisy_images = torch.cat((noisy_images, batch["conditional_input"]), dim=1)
 
             with accelerator.accumulate(model):
