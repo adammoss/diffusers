@@ -4,6 +4,51 @@ import urllib
 import numpy as np
 from skimage.transform import resize, downscale_local_mean, resize_local_mean
 
+import torch
+from torch.utils.data import Dataset
+
+
+class CustomDataset(Dataset):
+    def __init__(self, data, parameters, data_conditional=None, augment=True):
+        self.data = torch.from_numpy(data)
+        self.parameters = torch.from_numpy(parameters)
+        self.augment = augment
+        if data_conditional is not None:
+            self.data_conditional = torch.from_numpy(data_conditional)
+        else:
+            self.data_conditional = None
+
+    def __getitem__(self, index):
+        x = self.data[index]
+        y = self.parameters[index]
+        if self.data_conditional is not None:
+            x_conditional = self.data_conditional[index]
+        else:
+            x_conditional = None
+
+        if self.augment:
+            if np.random.rand() < 0.5:
+                x = torch.flip(x, [1, ])
+                if x_conditional is not None:
+                    x_conditional = torch.flip(x_conditional, [1, ])
+            if np.random.rand() < 0.5:
+                x = torch.flip(x, [2, ])
+                if x_conditional is not None:
+                    x_conditional = torch.flip(x_conditional, [2, ])
+            k = np.random.choice([0, 1, 2, 3])
+            if k > 0:
+                x = torch.rot90(x, k=k, dims=[1, 2])
+                if x_conditional is not None:
+                    x_conditional = torch.rot90(x_conditional, k=k, dims=[1, 2])
+
+        if x_conditional is not None:
+            return {"input": x, "parameters": y, "conditional_input": x_conditional}
+        else:
+            return {"input": x, "parameters": y}
+
+    def __len__(self):
+        return len(self.data)
+
 
 def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log, accelerator=None):
     if not os.path.exists(cache_dir):

@@ -6,14 +6,14 @@ import time
 import os
 from pathlib import Path
 from typing import Optional
-import numpy as np
 import json
+
+import numpy as np
 
 import accelerate
 import datasets
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration
@@ -31,7 +31,7 @@ from diffusers.utils import check_min_version, is_accelerate_version, is_tensorb
 from diffusers.utils.import_utils import is_xformers_available
 
 from pipelines import DDPMConditionPipeline
-from data import get_cmd_dataset, get_dsprites_dataset, get_low_resolution
+from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset, get_low_resolution
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -422,58 +422,17 @@ def main(args):
                 if "epoch_*" not in gitignore:
                     gitignore.write("epoch_*\n")
 
-            with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
-                json.dump(vars(args), file, indent=4)
-
         elif args.output_dir is not None:
             os.makedirs(args.output_dir, exist_ok=True)
+
+        with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
+            json.dump(vars(args), file, indent=4)
 
     # Get the datasets: you can either provide your own training and evaluation files (see below)
     # or specify a Dataset from the hub (the dataset will be downloaded automatically from the datasets Hub).
 
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
-
-    class CustomDataset(Dataset):
-        def __init__(self, data, parameters, data_conditional=None, augment=True):
-            self.data = torch.from_numpy(data)
-            self.parameters = torch.from_numpy(parameters)
-            self.augment = augment
-            if data_conditional is not None:
-                self.data_conditional = torch.from_numpy(data_conditional)
-            else:
-                self.data_conditional = None
-
-        def __getitem__(self, index):
-            x = self.data[index]
-            y = self.parameters[index]
-            if self.data_conditional is not None:
-                x_conditional = self.data_conditional[index]
-            else:
-                x_conditional = None
-
-            if self.augment:
-                if np.random.rand() < 0.5:
-                    x = torch.flip(x, [1, ])
-                    if x_conditional is not None:
-                        x_conditional = torch.flip(x_conditional, [1, ])
-                if np.random.rand() < 0.5:
-                    x = torch.flip(x, [2, ])
-                    if x_conditional is not None:
-                        x_conditional = torch.flip(x_conditional, [2, ])
-                k = np.random.choice([0, 1, 2, 3])
-                if k > 0:
-                    x = torch.rot90(x, k=k, dims=[1, 2])
-                    if x_conditional is not None:
-                        x_conditional = torch.rot90(x_conditional, k=k, dims=[1, 2])
-
-            if x_conditional is not None:
-                return {"input": x, "parameters": y, "conditional_input": x_conditional}
-            else:
-                return {"input": x, "parameters": y}
-
-        def __len__(self):
-            return len(self.data)
 
     if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
 
