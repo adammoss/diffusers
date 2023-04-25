@@ -5,9 +5,10 @@ import math
 import time
 import os
 from pathlib import Path
-from typing import Optional
-import numpy as np
+from typing import Optional, Union
 import json
+
+import numpy as np
 
 import accelerate
 import datasets
@@ -25,11 +26,11 @@ from tqdm.auto import tqdm
 
 import diffusers
 from diffusers import AutoencoderKL
-from diffusers.training_utils import EMAModel
+from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
-from diffusers.utils.import_utils import is_xformers_available
 
-from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset, get_low_resolution
+from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset
+from losses import BasicVAELoss
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -146,32 +147,8 @@ def parse_args():
         default=1e-4,
         help="Initial learning rate (after the potential warmup period) to use.",
     )
-    parser.add_argument(
-        "--lr_scheduler",
-        type=str,
-        default="cosine",
-        help=(
-            'The scheduler type to use. Choose between ["linear", "cosine", "cosine_with_restarts", "polynomial",'
-            ' "constant", "constant_with_warmup"]'
-        ),
-    )
-    parser.add_argument(
-        "--lr_warmup_steps", type=int, default=500, help="Number of steps for the warmup in the lr scheduler."
-    )
-    parser.add_argument("--adam_beta1", type=float, default=0.95, help="The beta1 parameter for the Adam optimizer.")
-    parser.add_argument("--adam_beta2", type=float, default=0.999, help="The beta2 parameter for the Adam optimizer.")
-    parser.add_argument(
-        "--adam_weight_decay", type=float, default=1e-6, help="Weight decay magnitude for the Adam optimizer."
-    )
-    parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer.")
-    parser.add_argument(
-        "--use_ema",
-        action="store_true",
-        help="Whether to use Exponential Moving Average for the final model weights.",
-    )
-    parser.add_argument("--ema_inv_gamma", type=float, default=1.0, help="The inverse gamma value for the EMA decay.")
-    parser.add_argument("--ema_power", type=float, default=3 / 4, help="The power value for the EMA decay.")
-    parser.add_argument("--ema_max_decay", type=float, default=0.9999, help="The maximum decay magnitude for EMA.")
+    parser.add_argument("--adam_beta1", type=float, default=0.5, help="The beta1 parameter for the Adam optimizer.")
+    parser.add_argument("--adam_beta2", type=float, default=0.9, help="The beta2 parameter for the Adam optimizer.")
     parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
     parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
     parser.add_argument(
@@ -456,9 +433,147 @@ def main(args):
         config = VAEModel.load_config(args.model_config_name_or_path)
         model = VAEModel.from_config(config)
 
+    print(model)
+
+    # Monkey patch loss
+    model.loss = BasicVAELoss()
+
     accelerator.print('Number of parameters: %s' % sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-    print(model)
+    # Initialize the optimizers
+    opt_ae = torch.optim.Adam(list(model.encoder.parameters()) +
+                              list(model.decoder.parameters()) +
+                              list(model.quant_conv.parameters()) +
+                              list(model.post_quant_conv.parameters()),
+                              lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
+    #opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
+    #                            lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
+
+    # Prepare everything with our `accelerator`.
+    model, train_dataloader = accelerator.prepare(model, train_dataloader)
+
+    opt_ae = accelerator.prepare_optimizer(opt_ae)
+    #opt_disc = accelerator.prepare_optimizer(opt_disc)
+
+    # We need to initialize the trackers we use, and also store our configuration.
+    # The trackers initializes automatically on the main process.
+    if accelerator.is_main_process:
+        run = os.path.split(__file__)[-1].split(".")[0]
+        accelerator.init_trackers(run)
+
+    total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+    max_train_steps = args.num_epochs * num_update_steps_per_epoch
+
+    logger.info("***** Running training *****")
+    logger.info(f"  Num examples = {len(dataset)}")
+    logger.info(f"  Num Epochs = {args.num_epochs}")
+    logger.info(f"  Instantaneous batch size per device = {args.train_batch_size}")
+    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+    logger.info(f"  Total optimization steps = {max_train_steps}")
+
+    global_step = 0
+    first_epoch = 0
+
+    # Potentially load in the weights and states from a previous save
+    if args.resume_from_checkpoint:
+        if args.resume_from_checkpoint != "latest":
+            path = os.path.basename(args.resume_from_checkpoint)
+        else:
+            # Get the most recent checkpoint
+            dirs = os.listdir(args.output_dir)
+            dirs = [d for d in dirs if d.startswith("checkpoint")]
+            dirs = sorted(dirs, key=lambda x: int(x.split("-")[1]))
+            path = dirs[-1] if len(dirs) > 0 else None
+
+        if path is None:
+            accelerator.print(
+                f"Checkpoint '{args.resume_from_checkpoint}' does not exist. Starting a new training run."
+            )
+            args.resume_from_checkpoint = None
+        else:
+            accelerator.print(f"Resuming from checkpoint {path}")
+            accelerator.load_state(os.path.join(args.output_dir, path))
+            global_step = int(path.split("-")[1])
+
+            resume_global_step = global_step * args.gradient_accumulation_steps
+            first_epoch = global_step // num_update_steps_per_epoch
+            resume_step = resume_global_step % (num_update_steps_per_epoch * args.gradient_accumulation_steps)
+
+    # Train!
+    for epoch in range(first_epoch, args.num_epochs):
+        model.train()
+
+        progress_bar = tqdm(total=num_update_steps_per_epoch, disable=not accelerator.is_local_main_process)
+        progress_bar.set_description(f"Epoch {epoch}")
+        for step, batch in enumerate(train_dataloader):
+            # Skip steps until we reach the resumed step
+            if args.resume_from_checkpoint and epoch == first_epoch and step < resume_step:
+                if step % args.gradient_accumulation_steps == 0:
+                    progress_bar.update(1)
+                continue
+
+            inputs = batch["input"]
+
+            with accelerator.accumulate(model):
+
+                posterior = model.encode(inputs).latent_dist
+                z = posterior.sample()
+                reconstructions = model.decode(z).sample
+
+                last_layer = model.decoder.conv_out.weight
+
+                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, split="train")
+
+                accelerator.backward(aeloss)
+
+                #if accelerator.sync_gradients:
+                #    accelerator.clip_grad_norm_(model.parameters(), 1.0)
+                opt_ae.step()
+                opt_ae.zero_grad()
+
+            # Checks if the accelerator has performed an optimization step behind the scenes
+            if accelerator.sync_gradients:
+                progress_bar.update(1)
+                global_step += 1
+
+                if global_step % args.checkpointing_steps == 0:
+                    if accelerator.is_main_process:
+                        save_path = os.path.join(args.output_dir, f"checkpoint-{global_step}")
+                        accelerator.save_state(save_path)
+                        logger.info(f"Saved state to {save_path}")
+
+            logs = {"loss": aeloss.detach().item(), "step": global_step}
+            progress_bar.set_postfix(**logs)
+            accelerator.log(logs, step=global_step)
+
+            progress_bar.close()
+
+            accelerator.wait_for_everyone()
+
+            # Generate sample images for visual inspection
+            if accelerator.is_main_process:
+                if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
+                    vae = accelerator.unwrap_model(model)
+
+                    # Generate images
+
+                if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
+                    # save the model
+                    vae = accelerator.unwrap_model(model)
+
+                    #pipeline = DDPMConditionPipeline(
+                    #    unet=unet,
+                    #    scheduler=noise_scheduler,
+                    #)
+
+                    #pipeline.save_pretrained(args.output_dir)
+
+                    if args.push_to_hub:
+                        repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
+
+        accelerator.end_training()
 
 
 if __name__ == "__main__":
