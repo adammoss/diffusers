@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-#from taming.modules.losses.vqperceptual import *
+from taming.modules.losses.vqperceptual import *
 
 
 class BasicVAELoss(nn.Module):
@@ -31,7 +31,6 @@ class BasicVAELoss(nn.Module):
                "{}/rec_loss".format(split): rec_loss.detach().mean(),
                }
         return loss, log
-
 
 
 class LPIPSWithDiscriminator(nn.Module):

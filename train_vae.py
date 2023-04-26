@@ -30,7 +30,7 @@ from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset
-from losses import BasicVAELoss
+from losses import BasicVAELoss, LPIPSWithDiscriminator
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -61,7 +61,22 @@ def parse_args():
         "--model_config_name_or_path",
         type=str,
         default=None,
-        help="The config of the UNet model to train, leave as None to use standard configuration.",
+        help="The config of the VAE model to train, leave as None to use standard configuration.",
+    )
+    parser.add_argument(
+        "--disc_start",
+        type=int,
+        default=50001,
+    )
+    parser.add_argument(
+        "--kl_weight",
+        type=float,
+        default=1e-6,
+    )
+    parser.add_argument(
+        "--disc_weight",
+        type=float,
+        default=0.5,
     )
     parser.add_argument(
         "--train_data_dir",
@@ -433,10 +448,9 @@ def main(args):
         config = VAEModel.load_config(args.model_config_name_or_path)
         model = VAEModel.from_config(config)
 
-    print(model)
-
     # Monkey patch loss
-    model.loss = BasicVAELoss()
+    model.loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                        disc_weight=args.disc_weight, disc_in_channels=in_channels)
 
     accelerator.print('Number of parameters: %s' % sum(p.numel() for p in model.parameters() if p.requires_grad))
 
@@ -446,14 +460,14 @@ def main(args):
                               list(model.quant_conv.parameters()) +
                               list(model.post_quant_conv.parameters()),
                               lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
-    #opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
-    #                            lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
+    opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
+                                lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
     model, train_dataloader = accelerator.prepare(model, train_dataloader)
 
     opt_ae = accelerator.prepare_optimizer(opt_ae)
-    #opt_disc = accelerator.prepare_optimizer(opt_disc)
+    opt_disc = accelerator.prepare_optimizer(opt_disc)
 
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
@@ -524,14 +538,21 @@ def main(args):
 
                 last_layer = model.decoder.conv_out.weight
 
-                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, split="train")
+                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
+                                                 last_layer=last_layer, split="train")
+
+                discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
+                                                     last_layer=last_layer, split="train")
 
                 accelerator.backward(aeloss)
+                accelerator.backward(discloss)
 
-                #if accelerator.sync_gradients:
-                #    accelerator.clip_grad_norm_(model.parameters(), 1.0)
+                if accelerator.sync_gradients:
+                    accelerator.clip_grad_norm_(model.parameters(), 1.0)
                 opt_ae.step()
+                opt_disc.step()
                 opt_ae.zero_grad()
+                opt_disc.zero_grad()
 
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
@@ -544,7 +565,7 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"loss": aeloss.detach().item(), "step": global_step}
+            logs = {"ae_loss": aeloss.detach().item(), "disc_loss": discloss.detach().item(), "step": global_step}
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
