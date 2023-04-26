@@ -465,10 +465,8 @@ def main(args):
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
-    model, train_dataloader = accelerator.prepare(model, train_dataloader)
-
-    opt_ae = accelerator.prepare_optimizer(opt_ae)
-    opt_disc = accelerator.prepare_optimizer(opt_disc)
+    model, train_dataloader, loss, opt_ae, opt_disc = accelerator.prepare(model, train_dataloader, loss,
+                                                                          opt_ae, opt_disc)
 
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
