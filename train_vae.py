@@ -296,8 +296,6 @@ def main(args):
     # Which VAEmodel to use
     VAEModel = AutoencoderKL
 
-    print(VAEModel)
-
     # `accelerate` 0.16.0 will have better support for customized saving
     if version.parse(accelerate.__version__) >= version.parse("0.16.0"):
         # create custom saving & loading hooks so that `accelerator.save_state(...)` serializes in a nice format
@@ -569,32 +567,32 @@ def main(args):
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
-            progress_bar.close()
+        progress_bar.close()
 
-            accelerator.wait_for_everyone()
+        accelerator.wait_for_everyone()
 
-            # Generate sample images for visual inspection
-            if accelerator.is_main_process:
-                if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
-                    vae = accelerator.unwrap_model(model)
+        # Generate sample images for visual inspection
+        if accelerator.is_main_process:
+            if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
+                vae = accelerator.unwrap_model(model)
 
-                    # Generate images
+                # Generate images
 
-                if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
-                    # save the model
-                    vae = accelerator.unwrap_model(model)
+            if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
+                # save the model
+                vae = accelerator.unwrap_model(model)
 
-                    #pipeline = DDPMConditionPipeline(
-                    #    unet=unet,
-                    #    scheduler=noise_scheduler,
-                    #)
+                #pipeline = DDPMConditionPipeline(
+                #    unet=unet,
+                #    scheduler=noise_scheduler,
+                #)
 
-                    #pipeline.save_pretrained(args.output_dir)
+                #pipeline.save_pretrained(args.output_dir)
 
-                    if args.push_to_hub:
-                        repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
+                if args.push_to_hub:
+                    repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
 
-        accelerator.end_training()
+    accelerator.end_training()
 
 
 if __name__ == "__main__":
