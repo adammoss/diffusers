@@ -30,7 +30,7 @@ from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset
-from losses import BasicVAELoss, LPIPSWithDiscriminator
+from losses import LPIPSWithDiscriminator
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -209,8 +209,8 @@ def parse_args():
     parser.add_argument(
         "--loss",
         type=str,
-        default="mse",
-        choices=["mse", "huber"],
+        default="lpips",
+        choices=["lpips"],
     )
     parser.add_argument(
         "--checkpointing_steps",
@@ -446,9 +446,12 @@ def main(args):
         config = VAEModel.load_config(args.model_config_name_or_path)
         model = VAEModel.from_config(config)
 
-    # Monkey patch loss
-    model.loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
-                                        disc_weight=args.disc_weight, disc_in_channels=in_channels)
+    # Loss
+    if args.loss == 'lpips':
+        loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                      disc_weight=args.disc_weight, disc_in_channels=in_channels)
+    else:
+        raise ValueError(f"Unsupported loss type: {args.loss}")
 
     accelerator.print('Number of parameters: %s' % sum(p.numel() for p in model.parameters() if p.requires_grad))
 
@@ -458,7 +461,7 @@ def main(args):
                               list(model.quant_conv.parameters()) +
                               list(model.post_quant_conv.parameters()),
                               lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
-    opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
+    opt_disc = torch.optim.Adam(loss.discriminator.parameters(),
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
@@ -536,11 +539,11 @@ def main(args):
 
                 last_layer = model.decoder.conv_out.weight
 
-                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
-                                                 last_layer=last_layer, split="train")
+                aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
+                                           last_layer=last_layer, split="train")
 
-                discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
-                                                     last_layer=last_layer, split="train")
+                discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
+                                               last_layer=last_layer, split="train")
 
                 accelerator.backward(aeloss)
                 accelerator.backward(discloss)
