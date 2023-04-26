@@ -448,8 +448,8 @@ def main(args):
 
     # Loss
     if args.loss == 'lpips':
-        loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
-                                      disc_weight=args.disc_weight, disc_in_channels=in_channels)
+        model.loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                            disc_weight=args.disc_weight, disc_in_channels=in_channels)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
@@ -461,12 +461,12 @@ def main(args):
                               list(model.quant_conv.parameters()) +
                               list(model.post_quant_conv.parameters()),
                               lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
-    opt_disc = torch.optim.Adam(loss.discriminator.parameters(),
+    opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
-    model, train_dataloader, loss, opt_ae, opt_disc = accelerator.prepare(model, train_dataloader, loss,
-                                                                          opt_ae, opt_disc)
+    model, train_dataloader, opt_ae, opt_disc = accelerator.prepare(model, train_dataloader,
+                                                                    opt_ae, opt_disc)
 
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
@@ -537,11 +537,11 @@ def main(args):
 
                 last_layer = model.decoder.conv_out.weight
 
-                aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
-                                           last_layer=last_layer, split="train")
+                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
+                                                 last_layer=last_layer, split="train")
 
-                discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
-                                               last_layer=last_layer, split="train")
+                discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
+                                                     last_layer=last_layer, split="train")
 
                 accelerator.backward(aeloss)
                 accelerator.backward(discloss)
