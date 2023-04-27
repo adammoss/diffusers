@@ -655,7 +655,6 @@ def main(args):
                     )
 
         accelerator.log({"test_loss": test_loss}, step=global_step)
-        test_loss = 0.0
 
         # Generate sample images for visual inspection
         if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
