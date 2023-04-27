@@ -626,9 +626,9 @@ def main(args):
                                                  last_layer=last_layer, split="test")
 
             # Gather the losses across all processes for logging (if we use distributed training).
-            avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
+            avg_loss = accelerator.gather(aeloss.repeat(args.eval_batch_size)).mean()
             test_loss += avg_loss.item() / args.gradient_accumulation_steps
-            avg_loss = accelerator.gather(discloss.repeat(args.train_batch_size)).mean()
+            avg_loss = accelerator.gather(discloss.repeat(args.eval_batch_size)).mean()
             test_loss += avg_loss.item() / args.gradient_accumulation_steps
 
         accelerator.log({"test_loss": test_loss}, step=global_step)
@@ -646,13 +646,7 @@ def main(args):
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
                 vae = accelerator.unwrap_model(model)
-
-                #pipeline = DDPMConditionPipeline(
-                #    unet=unet,
-                #    scheduler=noise_scheduler,
-                #)
-
-                #pipeline.save_pretrained(args.output_dir)
+                vae.save_pretrained(args.output_dir)
 
                 if args.push_to_hub:
                     repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
