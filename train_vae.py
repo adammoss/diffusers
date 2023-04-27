@@ -14,8 +14,6 @@ from sklearn.model_selection import train_test_split
 import accelerate
 import datasets
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration
@@ -455,7 +453,7 @@ def main(args):
             in_channels=in_channels,
             out_channels=out_channels,
             latent_channels=4,
-            scaling_factor= 0.18215,
+            scaling_factor=0.18215,
             layers_per_block=2,
             block_out_channels=(128, 256, 512, 512),
             down_block_types=(
@@ -477,8 +475,8 @@ def main(args):
 
     # Loss
     if args.loss == 'lpips':
-        model.loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
-                                            disc_weight=args.disc_weight, disc_in_channels=in_channels)
+        loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                      disc_weight=args.disc_weight, disc_in_channels=in_channels)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
@@ -494,8 +492,8 @@ def main(args):
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
-    model, train_dataloader, test_dataloader, opt_ae, opt_disc = accelerator.prepare(model, train_dataloader,
-                                                                                     test_dataloader, opt_ae, opt_disc)
+    model, train_dataloader, test_dataloader, opt_ae, opt_disc, loss = \
+        accelerator.prepare(model, train_dataloader, test_dataloader, opt_ae, opt_disc, loss)
 
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
@@ -567,11 +565,11 @@ def main(args):
 
                 last_layer = model.decoder.conv_out.weight
 
-                aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
-                                                 last_layer=last_layer, split="train")
+                aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
+                                           last_layer=last_layer, split="train")
 
-                discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
-                                                     last_layer=last_layer, split="train")
+                discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
+                                               last_layer=last_layer, split="train")
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
@@ -619,11 +617,11 @@ def main(args):
             z = posterior.sample()
             reconstructions = model.decode(z).sample
 
-            aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
-                                             last_layer=last_layer, split="test")
+            aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
+                                       last_layer=last_layer, split="test")
 
-            discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
-                                                 last_layer=last_layer, split="test")
+            discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
+                                           last_layer=last_layer, split="test")
 
             # Gather the losses across all processes for logging (if we use distributed training).
             avg_loss = accelerator.gather(aeloss.repeat(args.eval_batch_size)).mean()
@@ -646,7 +644,7 @@ def main(args):
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
                 vae = accelerator.unwrap_model(model)
-                vae.save_pretrained(args.output_dir)
+                vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
 
                 if args.push_to_hub:
                     repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
