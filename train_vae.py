@@ -641,7 +641,7 @@ def main(args):
 
                 # Generate images
 
-                print(vae(test_dataset[0]))
+                #print(vae(test_dataset[0]))
 
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
