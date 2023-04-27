@@ -637,7 +637,9 @@ def main(args):
             if accelerator.is_main_process and step == 0 and \
                     (epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1):
 
-                images_processed = reconstructions.detach().cpu().numpy() / 2 + 0.5
+                images_processed = (reconstructions / 2 + 0.5).clamp(0, 1)
+                images_processed = images_processed.detach().cpu().numpy()
+                images_processed = (images_processed * 255).round().astype("uint8")
 
                 if args.logger == "tensorboard":
                     if is_accelerate_version(">=", "0.17.0.dev0"):
