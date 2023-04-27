@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
+        action='append',
         default=None,
         help=(
             "The name of the Dataset (from the HuggingFace hub) to train on (could be your own, possibly private,"
@@ -283,7 +284,7 @@ def main(args):
     if args.output_dir == "output/vae":
         # Default output
         args.output_dir += '-%s' % args.resolution
-        args.output_dir += '-' + args.dataset_name.replace("_", "-")
+        args.output_dir += '-' + '-'.join(args.dataset_name).replace("_", "-")
         args.output_dir += '-%s' % int(time.time())
 
     logging_dir = os.path.join(args.output_dir, args.logging_dir)
@@ -377,15 +378,19 @@ def main(args):
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
 
-    if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
+    if 'simba' in args.dataset_name[0].lower() or 'illustris' in args.dataset_name[0].lower():
 
-        X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
-                               data_size=args.data_size, transform=np.log, accelerator=accelerator)
+        data = []
+        for dataset_name in args.dataset_name:
+            data.append(get_cmd_dataset(dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
+                                        data_size=args.data_size, transform=np.log, accelerator=accelerator))
+        X = np.concatenate([d[0] for d in data], axis=0)
+        Y = np.concatenate([d[1] for d in data], axis=0)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_size, random_state=42)
         train_dataset = CustomDataset(X_train, Y_train, augment=True)
         test_dataset = CustomDataset(X_test, Y_test, augment=False)
 
-    elif args.dataset_name == 'dsprites':
+    elif args.dataset_name[0] == 'dsprites':
 
         X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size=args.data_size, accelerator=accelerator)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_size, random_state=42)
@@ -394,15 +399,15 @@ def main(args):
 
     else:
 
-        if args.dataset_name is not None:
+        if args.dataset_name[0] is not None:
             train_dataset = load_dataset(
-                args.dataset_name,
+                args.dataset_name[0],
                 args.dataset_config_name,
                 cache_dir=args.cache_dir,
                 split="train",
             )
             test_dataset = load_dataset(
-                args.dataset_name,
+                args.dataset_name[0],
                 args.dataset_config_name,
                 cache_dir=args.cache_dir,
                 split="test",
@@ -475,8 +480,8 @@ def main(args):
 
     # Loss
     if args.loss == 'lpips':
-        loss = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
-                                      disc_weight=args.disc_weight, disc_in_channels=in_channels)
+        loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                         disc_weight=args.disc_weight, disc_in_channels=in_channels)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
@@ -488,7 +493,7 @@ def main(args):
                               list(model.quant_conv.parameters()) +
                               list(model.post_quant_conv.parameters()),
                               lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
-    opt_disc = torch.optim.Adam(loss.discriminator.parameters(),
+    opt_disc = torch.optim.Adam(loss_fn.discriminator.parameters(),
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
@@ -565,11 +570,11 @@ def main(args):
 
                 last_layer = model.decoder.conv_out.weight
 
-                aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
-                                           last_layer=last_layer, split="train")
+                aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
+                                              last_layer=last_layer, split="train")
 
-                discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
-                                               last_layer=last_layer, split="train")
+                discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                                                  last_layer=last_layer, split="train")
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
@@ -617,11 +622,11 @@ def main(args):
             z = posterior.sample()
             reconstructions = model.decode(z).sample
 
-            aeloss, log_dict_ae = loss(inputs, reconstructions, posterior, 0, global_step,
-                                       last_layer=last_layer, split="test")
+            aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
+                                          last_layer=last_layer, split="test")
 
-            discloss, log_dict_disc = loss(inputs, reconstructions, posterior, 1, global_step,
-                                           last_layer=last_layer, split="test")
+            discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                                              last_layer=last_layer, split="test")
 
             # Gather the losses across all processes for logging (if we use distributed training).
             avg_loss = accelerator.gather(aeloss.repeat(args.eval_batch_size)).mean()
@@ -629,25 +634,35 @@ def main(args):
             avg_loss = accelerator.gather(discloss.repeat(args.eval_batch_size)).mean()
             test_loss += avg_loss.item() / args.gradient_accumulation_steps
 
+            if accelerator.is_main_process and step == 0 and \
+                    (epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1):
+
+                images_processed = reconstructions.sample.detach().numpy()
+
+                if args.logger == "tensorboard":
+                    if is_accelerate_version(">=", "0.17.0.dev0"):
+                        tracker = accelerator.get_tracker("tensorboard", unwrap=True)
+                    else:
+                        tracker = accelerator.get_tracker("tensorboard")
+                    tracker.add_images("test_samples", images_processed.transpose(0, 3, 1, 2), epoch)
+                elif args.logger == "wandb":
+                    # Upcoming `log_images` helper coming in https://github.com/huggingface/accelerate/pull/962/files
+                    accelerator.get_tracker("wandb").log(
+                        {"test_samples": [wandb.Image(img) for img in images_processed], "epoch": epoch},
+                        step=global_step,
+                    )
+
         accelerator.log({"test_loss": test_loss}, step=global_step)
         test_loss = 0.0
 
         # Generate sample images for visual inspection
-        if accelerator.is_main_process:
-            if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
-                vae = accelerator.unwrap_model(model)
+        if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
+            # save the model
+            vae = accelerator.unwrap_model(model)
+            vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
 
-                # Generate images
-
-                #print(vae(test_dataset[0]))
-
-            if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
-                # save the model
-                vae = accelerator.unwrap_model(model)
-                vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
-
-                if args.push_to_hub:
-                    repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
+            if args.push_to_hub:
+                repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
 
     accelerator.end_training()
 
