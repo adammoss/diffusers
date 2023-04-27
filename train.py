@@ -489,8 +489,6 @@ def main(args):
 
         dataset.set_transform(transform_images)
 
-    logger.info(f"Dataset size: {len(dataset)}")
-
     d = dataset[0]
 
     in_channels = d["input"].size()[0]

@@ -436,9 +436,6 @@ def main(args):
 
         train_dataset.set_transform(transform_images)
 
-    logger.info(f"Train dataset size: {len(train_dataset)}")
-    logger.info(f"Test dataset size: {len(test_dataset)}")
-
     d = train_dataset[0]
 
     in_channels = d["input"].size()[0]
@@ -511,7 +508,8 @@ def main(args):
     max_train_steps = args.num_epochs * num_update_steps_per_epoch
 
     logger.info("***** Running training *****")
-    logger.info(f"  Num examples = {len(dataset)}")
+    logger.info(f"  Num train examples = {len(train_dataset)}")
+    logger.info(f"  Num test examples = {len(test_dataset)}")
     logger.info(f"  Num Epochs = {args.num_epochs}")
     logger.info(f"  Instantaneous batch size per device = {args.train_batch_size}")
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
