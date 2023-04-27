@@ -9,6 +9,7 @@ from typing import Optional, Union
 import json
 
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 import accelerate
 import datasets
@@ -89,6 +90,16 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--test_data_dir",
+        type=str,
+        default=None,
+        help=(
+            "A folder containing the training data. Folder contents must follow the structure described in"
+            " https://huggingface.co/docs/datasets/image_dataset#imagefolder. In particular, a `metadata.jsonl` file"
+            " must exist to provide the captions for the images. Ignored if `dataset_name` is specified."
+        ),
+    )
+    parser.add_argument(
         "--output_dir",
         type=str,
         default="output/vae",
@@ -116,6 +127,11 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--test_size",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
         "--center_crop",
         default=False,
         action="store_true",
@@ -134,7 +150,7 @@ def parse_args():
         "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
     )
     parser.add_argument(
-        "--eval_batch_size", type=int, default=16, help="The number of images to generate for evaluation."
+        "--eval_batch_size", type=int, default=16, help="Batch size (per device) for the test dataloader."
     )
     parser.add_argument(
         "--dataloader_num_workers",
@@ -367,26 +383,38 @@ def main(args):
 
         X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
                                data_size=args.data_size, transform=np.log, accelerator=accelerator)
-        dataset = CustomDataset(X, Y, augment=True)
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_size, random_state=42)
+        train_dataset = CustomDataset(X_train, Y_train, augment=True)
+        test_dataset = CustomDataset(X_test, Y_test, augment=False)
 
     elif args.dataset_name == 'dsprites':
 
         X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size=args.data_size, accelerator=accelerator)
-        dataset = CustomDataset(X, Y, augment=False)
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_size, random_state=42)
+        train_dataset = CustomDataset(X_train, Y_train, augment=False)
+        test_dataset = CustomDataset(X_test, Y_test, augment=False)
 
     else:
 
         if args.dataset_name is not None:
-            dataset = load_dataset(
+            train_dataset = load_dataset(
                 args.dataset_name,
                 args.dataset_config_name,
                 cache_dir=args.cache_dir,
                 split="train",
             )
+            test_dataset = load_dataset(
+                args.dataset_name,
+                args.dataset_config_name,
+                cache_dir=args.cache_dir,
+                split="test",
+            )
 
         else:
-            dataset = load_dataset("imagefolder", data_dir=args.train_data_dir, cache_dir=args.cache_dir,
-                                   split="train")
+            train_dataset = load_dataset("imagefolder", data_dir=args.train_data_dir, cache_dir=args.cache_dir,
+                                         split="train")
+            test_dataset = load_dataset("imagefolder", data_dir=args.test_data_dir, cache_dir=args.cache_dir,
+                                         split="test")
             # See more about loading custom images at
             # https://huggingface.co/docs/datasets/v2.4.0/en/image_load#imagefolder
 
@@ -406,17 +434,21 @@ def main(args):
             images = [augmentations(image.convert("RGB")) for image in examples["image"]]
             return {"input": images}
 
-        dataset.set_transform(transform_images)
+        train_dataset.set_transform(transform_images)
 
-    logger.info(f"Dataset size: {len(dataset)}")
+    logger.info(f"Train dataset size: {len(train_dataset)}")
+    logger.info(f"Test dataset size: {len(test_dataset)}")
 
-    d = dataset[0]
+    d = train_dataset[0]
 
     in_channels = d["input"].size()[0]
     out_channels = d["input"].size()[0]
 
     train_dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
+        train_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
+    )
+    test_dataloader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.eval_batch_size, shuffle=False, num_workers=args.dataloader_num_workers
     )
 
     # Initialize the model
@@ -517,7 +549,7 @@ def main(args):
     # Train!
     for epoch in range(first_epoch, args.num_epochs):
         model.train()
-
+        train_loss = 0.0
         progress_bar = tqdm(total=num_update_steps_per_epoch, disable=not accelerator.is_local_main_process)
         progress_bar.set_description(f"Epoch {epoch}")
         for step, batch in enumerate(train_dataloader):
@@ -543,6 +575,12 @@ def main(args):
                 discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
                                                      last_layer=last_layer, split="train")
 
+                # Gather the losses across all processes for logging (if we use distributed training).
+                avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
+                train_loss += avg_loss.item() / args.gradient_accumulation_steps
+                avg_loss = accelerator.gather(discloss.repeat(args.train_batch_size)).mean()
+                train_loss += avg_loss.item() / args.gradient_accumulation_steps
+
                 accelerator.backward(aeloss)
                 accelerator.backward(discloss)
 
@@ -557,6 +595,8 @@ def main(args):
             if accelerator.sync_gradients:
                 progress_bar.update(1)
                 global_step += 1
+                accelerator.log({"train_loss": train_loss}, step=global_step)
+                train_loss = 0.0
 
                 if global_step % args.checkpointing_steps == 0:
                     if accelerator.is_main_process:
@@ -573,8 +613,8 @@ def main(args):
         accelerator.wait_for_everyone()
 
         model.eval()
-
-        for step, batch in enumerate(train_dataloader):
+        test_loss = 0
+        for step, batch in enumerate(test_dataloader):
             inputs = batch["input"]
 
             posterior = model.encode(inputs).latent_dist
@@ -587,12 +627,23 @@ def main(args):
             discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
                                                  last_layer=last_layer, split="test")
 
+            # Gather the losses across all processes for logging (if we use distributed training).
+            avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
+            test_loss += avg_loss.item() / args.gradient_accumulation_steps
+            avg_loss = accelerator.gather(discloss.repeat(args.train_batch_size)).mean()
+            test_loss += avg_loss.item() / args.gradient_accumulation_steps
+
+        accelerator.log({"test_loss": test_loss}, step=global_step)
+        test_loss = 0.0
+
         # Generate sample images for visual inspection
         if accelerator.is_main_process:
             if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
                 vae = accelerator.unwrap_model(model)
 
                 # Generate images
+
+                print(vae(test_dataset[0]))
 
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
