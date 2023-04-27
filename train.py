@@ -668,6 +668,7 @@ def main(args):
     # Train!
     for epoch in range(first_epoch, args.num_epochs):
         model.train()
+        train_loss = 0.0
         progress_bar = tqdm(total=num_update_steps_per_epoch, disable=not accelerator.is_local_main_process)
         progress_bar.set_description(f"Epoch {epoch}")
         for step, batch in enumerate(train_dataloader):
@@ -721,6 +722,10 @@ def main(args):
                 else:
                     raise ValueError(f"Unsupported prediction type: {args.prediction_type}")
 
+                # Gather the losses across all processes for logging (if we use distributed training).
+                avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
+                train_loss += avg_loss.item() / args.gradient_accumulation_steps
+
                 accelerator.backward(loss)
 
                 if accelerator.sync_gradients:
@@ -735,6 +740,8 @@ def main(args):
                     ema_model.step(model.parameters())
                 progress_bar.update(1)
                 global_step += 1
+                accelerator.log({"train_loss": train_loss}, step=global_step)
+                train_loss = 0.0
 
                 if global_step % args.checkpointing_steps == 0:
                     if accelerator.is_main_process:
@@ -747,6 +754,7 @@ def main(args):
                 logs["ema_decay"] = ema_model.cur_decay_value
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
+
         progress_bar.close()
 
         accelerator.wait_for_everyone()

@@ -572,6 +572,21 @@ def main(args):
 
         accelerator.wait_for_everyone()
 
+        model.eval()
+
+        for step, batch in enumerate(train_dataloader):
+            inputs = batch["input"]
+
+            posterior = model.encode(inputs).latent_dist
+            z = posterior.sample()
+            reconstructions = model.decode(z).sample
+
+            aeloss, log_dict_ae = model.loss(inputs, reconstructions, posterior, 0, global_step,
+                                             last_layer=last_layer, split="test")
+
+            discloss, log_dict_disc = model.loss(inputs, reconstructions, posterior, 1, global_step,
+                                                 last_layer=last_layer, split="test")
+
         # Generate sample images for visual inspection
         if accelerator.is_main_process:
             if epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
