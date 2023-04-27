@@ -637,14 +637,14 @@ def main(args):
             if accelerator.is_main_process and step == 0 and \
                     (epoch % args.save_images_epochs == 0 or epoch == args.num_epochs - 1):
 
-                images_processed = reconstructions.detach().numpy()
+                images_processed = reconstructions.detach().cpu().numpy()
 
                 if args.logger == "tensorboard":
                     if is_accelerate_version(">=", "0.17.0.dev0"):
                         tracker = accelerator.get_tracker("tensorboard", unwrap=True)
                     else:
                         tracker = accelerator.get_tracker("tensorboard")
-                    tracker.add_images("test_samples", images_processed.transpose(0, 3, 1, 2), epoch)
+                    tracker.add_images("test_samples", images_processed, epoch)
                 elif args.logger == "wandb":
                     # Upcoming `log_images` helper coming in https://github.com/huggingface/accelerate/pull/962/files
                     accelerator.get_tracker("wandb").log(
