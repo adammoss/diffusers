@@ -488,7 +488,7 @@ def main(args):
                               list(model.quant_conv.parameters()) +
                               list(model.post_quant_conv.parameters()),
                               lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
-    opt_disc = torch.optim.Adam(model.loss.discriminator.parameters(),
+    opt_disc = torch.optim.Adam(loss.discriminator.parameters(),
                                 lr=args.learning_rate, betas=(args.adam_beta1, args.adam_beta2))
 
     # Prepare everything with our `accelerator`.
