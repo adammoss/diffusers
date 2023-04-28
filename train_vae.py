@@ -24,12 +24,12 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 import diffusers
-from diffusers import AutoencoderKL
+from diffusers import AutoencoderKL, VQModel
 from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset
-from losses import LPIPSWithDiscriminator
+from losses import LPIPSWithDiscriminator, VQLPIPSWithDiscriminator
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -77,6 +77,11 @@ def parse_args():
         "--disc_weight",
         type=float,
         default=0.5,
+    )
+    parser.add_argument(
+        "--codebook_weight",
+        type=float,
+        default=1.0,
     )
     parser.add_argument(
         "--train_data_dir",
@@ -228,6 +233,12 @@ def parse_args():
         choices=["lpips"],
     )
     parser.add_argument(
+        "--vae",
+        type=str,
+        default="kl",
+        choices=["kl", "vq"],
+    )
+    parser.add_argument(
         "--checkpointing_steps",
         type=int,
         default=500,
@@ -309,7 +320,12 @@ def main(args):
         import wandb
 
     # Which VAEmodel to use
-    VAEModel = AutoencoderKL
+    if args.vae == 'kl':
+        VAEModel = AutoencoderKL
+    elif args.vae == 'vq':
+        VAEModel = VQModel
+    else:
+        raise ValueError(f"Unsupported VAE model: {args.vae}")
 
     # `accelerate` 0.16.0 will have better support for customized saving
     if version.parse(accelerate.__version__) >= version.parse("0.16.0"):
@@ -453,35 +469,63 @@ def main(args):
 
     # Initialize the model
     if args.model_config_name_or_path is None:
-        model = VAEModel(
-            sample_size=args.resolution,
-            in_channels=in_channels,
-            out_channels=out_channels,
-            latent_channels=4,
-            scaling_factor=0.18215,
-            layers_per_block=2,
-            block_out_channels=(128, 256, 512, 512),
-            down_block_types=(
-                "DownEncoderBlock2D",
-                "DownEncoderBlock2D",
-                "DownEncoderBlock2D",
-                "DownEncoderBlock2D",
-            ),
-            up_block_types=(
-                "UpDecoderBlock2D",
-                "UpDecoderBlock2D",
-                "UpDecoderBlock2D",
-                "UpDecoderBlock2D",
-            ),
-        )
+        if args.vae == 'kl':
+            model = VAEModel(
+                sample_size=args.resolution,
+                in_channels=in_channels,
+                out_channels=out_channels,
+                latent_channels=4,
+                scaling_factor=0.18215,
+                layers_per_block=2,
+                block_out_channels=(128, 256, 512, 512),
+                down_block_types=(
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                ),
+                up_block_types=(
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                ),
+            )
+        elif args.vae == 'vq':
+            model = VAEModel(
+                sample_size=args.resolution,
+                in_channels=in_channels,
+                out_channels=out_channels,
+                latent_channels=4,
+                scaling_factor=0.18215,
+                layers_per_block=2,
+                block_out_channels=(128, 256, 512, 512),
+                down_block_types=(
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                    "DownEncoderBlock2D",
+                ),
+                up_block_types=(
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                    "UpDecoderBlock2D",
+                ),
+                num_vq_embeddings=8192,
+            )
     else:
         config = VAEModel.load_config(args.model_config_name_or_path)
         model = VAEModel.from_config(config)
 
     # Loss
     if args.loss == 'lpips':
-        loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
-                                         disc_weight=args.disc_weight, disc_in_channels=in_channels)
+        if args.vae == 'kl':
+            loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                             disc_weight=args.disc_weight, disc_in_channels=in_channels)
+        elif args.vae == 'vq':
+            loss_fn = VQLPIPSWithDiscriminator(args.disc_start, codebook_weight=args.codebook_weight,
+                                               disc_in_channels=in_channels, disc_weight=args.disc_weight)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
@@ -564,17 +608,35 @@ def main(args):
 
             with accelerator.accumulate(model):
 
-                posterior = model.encode(inputs).latent_dist
-                z = posterior.sample()
-                reconstructions = model.decode(z).sample
+                if args.vae == 'kl':
 
-                last_layer = model.decoder.conv_out.weight
+                    posterior = model.encode(inputs).latent_dist
+                    z = posterior.sample()
+                    reconstructions = model.decode(z).sample
 
-                aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
-                                              last_layer=last_layer, split="train")
+                    last_layer = model.decoder.conv_out.weight
 
-                discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                    aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
                                                   last_layer=last_layer, split="train")
+
+                    discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                                                      last_layer=last_layer, split="train")
+
+                elif args.vae == 'vq':
+
+                    h = model.encoder(inputs)
+                    h = model.quant_conv(h)
+                    quant, emb_loss, info = model.quantize(h)
+                    quant = model.post_quant_conv(quant)
+                    reconstructions = model.decoder(quant)
+
+                    aeloss, log_dict_ae = loss_fn(emb_loss, inputs, reconstructions, 0, global_step,
+                                                  last_layer=last_layer, split="train",
+                                                  predicted_indices=info)
+
+                    discloss, log_dict_disc = loss_fn(emb_loss, inputs, reconstructions, 1, global_step,
+                                                      last_layer=last_layer, split="train",
+                                                      predicted_indices=info)
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(aeloss.repeat(args.train_batch_size)).mean()
@@ -620,15 +682,33 @@ def main(args):
         for step, batch in enumerate(test_dataloader):
             inputs = batch["input"]
 
-            posterior = model.encode(inputs).latent_dist
-            z = posterior.sample()
-            reconstructions = model.decode(z).sample
+            if args.vae == 'kl':
 
-            aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
-                                          last_layer=last_layer, split="test")
+                posterior = model.encode(inputs).latent_dist
+                z = posterior.sample()
+                reconstructions = model.decode(z).sample
 
-            discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
                                               last_layer=last_layer, split="test")
+
+                discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
+                                                  last_layer=last_layer, split="test")
+
+            elif args.vae == 'vq':
+
+                h = model.encoder(inputs)
+                h = model.quant_conv(h)
+                quant, emb_loss, info = model.quantize(h)
+                quant = model.post_quant_conv(quant)
+                reconstructions = model.decoder(quant)
+
+                aeloss, log_dict_ae = loss_fn(emb_loss, inputs, reconstructions, 0, global_step,
+                                              last_layer=last_layer, split="train",
+                                              predicted_indices=info)
+
+                discloss, log_dict_disc = loss_fn(emb_loss, inputs, reconstructions, 1, global_step,
+                                                  last_layer=last_layer, split="train",
+                                                  predicted_indices=info)
 
             # Gather the losses across all processes for logging (if we use distributed training).
             avg_loss = accelerator.gather(aeloss.repeat(args.eval_batch_size)).mean()
@@ -661,7 +741,7 @@ def main(args):
         logs.update(log_dict_disc)
         progress_bar.set_postfix(**logs)
         accelerator.log(logs, step=global_step)
-        
+
         # Generate sample images for visual inspection
         if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
             # save the model
