@@ -294,6 +294,7 @@ def get_full_repo_name(model_id: str, organization: Optional[str] = None, token:
 def main(args):
     if args.output_dir == "output/vae":
         # Default output
+        args.output_dir += '-%s' % args.vae
         args.output_dir += '-%s' % args.resolution
         args.output_dir += '-' + '-'.join(args.dataset_name).replace("_", "-")
         args.output_dir += '-%s' % int(time.time())
