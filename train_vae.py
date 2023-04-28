@@ -465,7 +465,7 @@ def main(args):
         train_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
     test_dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.eval_batch_size, shuffle=False, num_workers=args.dataloader_num_workers
+        test_dataset, batch_size=args.eval_batch_size, shuffle=False, num_workers=args.dataloader_num_workers
     )
 
     # Initialize the model
@@ -666,7 +666,7 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"train/ae_loss": aeloss, "train/disc_loss": discloss}
+            logs = {"train/ae_loss": aeloss.item(), "train/disc_loss": discloss.item()}
             logs.update(log_dict_ae)
             logs.update(log_dict_disc)
             progress_bar.set_postfix(**logs)
@@ -735,7 +735,7 @@ def main(args):
                         step=global_step,
                     )
 
-        logs = {"test/loss": test_loss}
+        logs = {"test/loss": test_loss, "test/ae_loss": aeloss.item(), "test/disc_loss": discloss.item()}
         logs.update(log_dict_ae)
         logs.update(log_dict_disc)
         progress_bar.set_postfix(**logs)
