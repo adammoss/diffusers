@@ -56,10 +56,10 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
 
     if (accelerator is None or accelerator.is_main_process) and \
             not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
-        urllib.request.urlretrieve(
-            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name,
-            os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)
-        )
+        url = 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name
+        print('Downloading %s' % url)
+        urllib.request.urlretrieve(url, os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name))
+        print('Finished download')
 
     if 'simba' in dataset_name.lower():
         parameter_file = 'params_SIMBA.txt'
@@ -107,10 +107,10 @@ def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None):
     if accelerator is None or accelerator.is_main_process:
 
         if not os.path.isfile(os.path.join(cache_dir, 'dsprites.npy')):
-            urllib.request.urlretrieve(
-                'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true',
-                os.path.join(cache_dir, 'dsprites.npy')
-            )
+            url = 'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true'
+            print('Downloading %s' % url)
+            urllib.request.urlretrieve(url, os.path.join(cache_dir, 'dsprites.npy'))
+            print('Finished download')
 
     if accelerator is not None:
         accelerator.wait_for_everyone()
