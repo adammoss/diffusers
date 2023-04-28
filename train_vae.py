@@ -746,7 +746,10 @@ def main(args):
         if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
             # save the model
             vae = accelerator.unwrap_model(model)
-            vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
+            if args.vae == 'kl':
+                vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
+            elif args.vae == 'vq':
+                vae.save_pretrained(os.path.join(args.output_dir, 'vqvae'))
 
             if args.push_to_hub:
                 repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=False)
