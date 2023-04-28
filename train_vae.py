@@ -605,7 +605,9 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"ae_loss": aeloss.detach().item(), "disc_loss": discloss.detach().item(), "step": global_step}
+            logs = {"step": global_step}
+            logs.update(log_dict_ae)
+            logs.update(log_dict_disc)
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
@@ -654,8 +656,12 @@ def main(args):
                         step=global_step,
                     )
 
-        accelerator.log({"test_loss": test_loss}, step=global_step)
-
+        logs = {"step": global_step}
+        logs.update(log_dict_ae)
+        logs.update(log_dict_disc)
+        progress_bar.set_postfix(**logs)
+        accelerator.log(logs, step=global_step)
+        
         # Generate sample images for visual inspection
         if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
             # save the model
