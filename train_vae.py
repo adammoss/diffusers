@@ -657,7 +657,7 @@ def main(args):
             if accelerator.sync_gradients:
                 progress_bar.update(1)
                 global_step += 1
-                accelerator.log({"train_loss": train_loss}, step=global_step)
+                accelerator.log({"train/loss": train_loss}, step=global_step)
                 train_loss = 0.0
 
                 if args.checkpointing_steps is not None and global_step % args.checkpointing_steps == 0:
@@ -666,7 +666,7 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {}
+            logs = {"train/ae_loss": aeloss, "train/disc_loss": discloss}
             logs.update(log_dict_ae)
             logs.update(log_dict_disc)
             progress_bar.set_postfix(**logs)
@@ -735,7 +735,7 @@ def main(args):
                         step=global_step,
                     )
 
-        logs = {}
+        logs = {"test/loss": test_loss}
         logs.update(log_dict_ae)
         logs.update(log_dict_disc)
         progress_bar.set_postfix(**logs)
