@@ -607,6 +607,8 @@ def main(args):
 
             inputs = batch["input"]
 
+            last_layer = model.decoder.conv_out.weight
+
             with accelerator.accumulate(model):
 
                 if args.vae == 'kl':
@@ -614,8 +616,6 @@ def main(args):
                     posterior = model.encode(inputs).latent_dist
                     z = posterior.sample()
                     reconstructions = model.decode(z).sample
-
-                    last_layer = model.decoder.conv_out.weight
 
                     aeloss, log_dict_ae = loss_fn(inputs, reconstructions, posterior, 0, global_step,
                                                   last_layer=last_layer, split="train")
@@ -682,6 +682,8 @@ def main(args):
         test_loss = 0
         for step, batch in enumerate(test_dataloader):
             inputs = batch["input"]
+
+            last_layer = model.decoder.conv_out.weight
 
             if args.vae == 'kl':
 
