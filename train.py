@@ -24,6 +24,7 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 import diffusers
+from diffusers import AutoencoderKL, VQModel
 from diffusers import DDPMPipeline, DDPMScheduler, UNet2DModel, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from diffusers.training_utils import EMAModel
@@ -86,6 +87,11 @@ def parse_args():
         type=str,
         default=None,
         help="The config of the UNet model to train, leave as None to use standard DDPM configuration.",
+    )
+    parser.add_argument(
+        "--vae_model",
+        type=str,
+        default=None,
     )
     parser.add_argument(
         "--train_data_dir",
@@ -491,8 +497,6 @@ def main(args):
 
     d = dataset[0]
 
-    in_channels = d["input"].size()[0]
-    out_channels = d["input"].size()[0]
     if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
         conditional_test = d["conditional_input"]
@@ -503,11 +507,34 @@ def main(args):
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
 
+    if args.vae_model is not None:
+        if 'kl' in args.vae_model:
+            vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
+        elif 'vq' in args.vae_model:
+            vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+        # Freeze the VAE
+        vae.requires_grad_(False)
+        weight_dtype = torch.float32
+        if accelerator.mixed_precision == "fp16":
+            weight_dtype = torch.float16
+        elif accelerator.mixed_precision == "bf16":
+            weight_dtype = torch.bfloat16
+        vae.to(accelerator.device, dtype=weight_dtype)
+        latent_shape = vae.encode(torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latent_dist.sample().size()
+        sample_size = latent_shape[2]
+        in_channels = latent_shape[1]
+        out_channels = latent_shape[1]
+    else:
+        vae = None
+        sample_size = args.resolution
+        in_channels = d["input"].size()[0]
+        out_channels = d["input"].size()[0]
+
     # Initialize the model
     if args.model_config_name_or_path is None:
         if args.conditional:
             model = UNetModel(
-                sample_size=args.resolution,
+                sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
@@ -528,7 +555,7 @@ def main(args):
             )
         else:
             model = UNetModel(
-                sample_size=args.resolution,
+                sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 layers_per_block=2,
@@ -676,7 +703,11 @@ def main(args):
                     progress_bar.update(1)
                 continue
 
-            clean_images = batch["input"]
+            if vae is not None:
+                clean_images = vae.encode(batch["input"].to(weight_dtype)).latent_dist.sample()
+                clean_images = clean_images * vae.config.scaling_factor
+            else:
+                clean_images = batch["input"]
 
             # Sample noise that we'll add to the images
             noise = torch.randn(clean_images.shape).to(clean_images.device)
@@ -779,7 +810,8 @@ def main(args):
                         batch_size=args.eval_batch_size,
                         num_inference_steps=args.ddpm_num_inference_steps,
                         output_type="numpy",
-                        encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1]
+                        encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1],
+                        vae=vae,
                     ).images
                 else:
                     if "conditional_input" in batch:
@@ -789,6 +821,7 @@ def main(args):
                             num_inference_steps=args.ddpm_num_inference_steps,
                             output_type="numpy",
                             conditional_image=conditional_test,
+                            vae=vae,
                         ).images
                     else:
                         images = pipeline(
@@ -796,6 +829,7 @@ def main(args):
                             batch_size=args.eval_batch_size,
                             num_inference_steps=args.ddpm_num_inference_steps,
                             output_type="numpy",
+                            vae=vae,
                         ).images
 
                 if args.use_ema:

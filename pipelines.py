@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 import numpy as np
 
+from diffusers import AutoencoderKL
 from diffusers.utils import randn_tensor
 from diffusers.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 
@@ -33,6 +34,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         encoder_hidden_states: List[float] = None,
         image: Optional[torch.FloatTensor] = None,
         conditional_image: Optional[torch.FloatTensor] = None,
+        vae: Optional[AutoencoderKL] = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -113,6 +115,9 @@ class DDPMConditionPipeline(DiffusionPipeline):
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
 
+        if vae is not None:
+            image = 1 / vae.config.scaling_factor * image
+            image = vae.decode(image).sample
         image = (image / 2 + 0.5).clamp(0, 1)
         image = image.cpu().permute(0, 2, 3, 1).numpy()
         if output_type == "pil":
