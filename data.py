@@ -50,7 +50,8 @@ class CustomDataset(Dataset):
         return len(self.data)
 
 
-def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log, accelerator=None):
+def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log,
+                    accelerator=None, norm_min=-1, norm_max=1):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
@@ -94,13 +95,13 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
     minimum = np.min(X, axis=0)
     maximum = np.max(X, axis=0)
     X = (X - minimum) / (maximum - minimum)
-    X = 2 * X - 1
+    X = (norm_max - norm_min) * X + norm_min
     X = np.expand_dims(X, 1)
 
     return X, Y
 
 
-def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None):
+def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None, norm_min=-1, norm_max=1):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
@@ -139,7 +140,7 @@ def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None):
     minimum = np.min(X, axis=0)
     maximum = np.max(X, axis=0)
     X = (X - minimum) / (maximum - minimum)
-    X = 2 * X - 1
+    X = (norm_max - norm_min) * X + norm_min
     X = np.expand_dims(X, 1)
 
     return X, Y
