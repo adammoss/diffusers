@@ -666,7 +666,7 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"step": global_step}
+            logs = {}
             logs.update(log_dict_ae)
             logs.update(log_dict_disc)
             progress_bar.set_postfix(**logs)
@@ -735,7 +735,7 @@ def main(args):
                         step=global_step,
                     )
 
-        logs = {"step": global_step}
+        logs = {}
         logs.update(log_dict_ae)
         logs.update(log_dict_disc)
         progress_bar.set_postfix(**logs)
