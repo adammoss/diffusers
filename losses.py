@@ -136,14 +136,14 @@ class VQLPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             loss = nll_loss + d_weight * disc_factor * g_loss + self.codebook_weight * codebook_loss.mean()
 
-            log = {"{}/total_loss".format(split): loss.clone().detach().mean(),
-                   "{}/quant_loss".format(split): codebook_loss.detach().mean(),
-                   "{}/nll_loss".format(split): nll_loss.detach().mean(),
-                   "{}/rec_loss".format(split): rec_loss.detach().mean(),
-                   "{}/p_loss".format(split): p_loss.detach().mean(),
-                   "{}/d_weight".format(split): d_weight.detach(),
+            log = {"{}/total_loss".format(split): loss.clone().detach().mean().item(),
+                   "{}/quant_loss".format(split): codebook_loss.detach().mean().item(),
+                   "{}/nll_loss".format(split): nll_loss.detach().mean().item(),
+                   "{}/rec_loss".format(split): rec_loss.detach().mean().item(),
+                   "{}/p_loss".format(split): p_loss.detach().mean().item(),
+                   "{}/d_weight".format(split): d_weight.detach().item(),
                    "{}/disc_factor".format(split): torch.tensor(disc_factor),
-                   "{}/g_loss".format(split): g_loss.detach().mean(),
+                   "{}/g_loss".format(split): g_loss.detach().mean().item(),
                    }
             if predicted_indices is not None:
                 assert self.n_classes is not None
@@ -165,9 +165,9 @@ class VQLPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             d_loss = disc_factor * self.disc_loss(logits_real, logits_fake)
 
-            log = {"{}/disc_loss".format(split): d_loss.clone().detach().mean(),
-                   "{}/logits_real".format(split): logits_real.detach().mean(),
-                   "{}/logits_fake".format(split): logits_fake.detach().mean()
+            log = {"{}/disc_loss".format(split): d_loss.clone().detach().mean().item(),
+                   "{}/logits_real".format(split): logits_real.detach().mean().item(),
+                   "{}/logits_fake".format(split): logits_fake.detach().mean().item(),
                    }
             return d_loss, log
 
@@ -250,14 +250,14 @@ class LPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             loss = weighted_nll_loss + self.kl_weight * kl_loss + d_weight * disc_factor * g_loss
 
-            log = {"{}/total_loss".format(split): loss.clone().detach().mean(),
+            log = {"{}/total_loss".format(split): loss.clone().detach().mean().item(),
                    "{}/logvar".format(split): self.logvar.detach(),
-                   "{}/kl_loss".format(split): kl_loss.detach().mean(),
-                   "{}/nll_loss".format(split): nll_loss.detach().mean(),
-                   "{}/rec_loss".format(split): rec_loss.detach().mean(),
-                   "{}/d_weight".format(split): d_weight.detach(),
+                   "{}/kl_loss".format(split): kl_loss.detach().mean().item(),
+                   "{}/nll_loss".format(split): nll_loss.detach().mean().item(),
+                   "{}/rec_loss".format(split): rec_loss.detach().mean().item(),
+                   "{}/d_weight".format(split): d_weight.detach().item(),
                    "{}/disc_factor".format(split): torch.tensor(disc_factor),
-                   "{}/g_loss".format(split): g_loss.detach().mean(),
+                   "{}/g_loss".format(split): g_loss.detach().mean().item(),
                    }
             return loss, log
 
@@ -273,8 +273,8 @@ class LPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             d_loss = disc_factor * self.disc_loss(logits_real, logits_fake)
 
-            log = {"{}/disc_loss".format(split): d_loss.clone().detach().mean(),
-                   "{}/logits_real".format(split): logits_real.detach().mean(),
-                   "{}/logits_fake".format(split): logits_fake.detach().mean()
+            log = {"{}/disc_loss".format(split): d_loss.clone().detach().mean().item(),
+                   "{}/logits_real".format(split): logits_real.detach().mean().item(),
+                   "{}/logits_fake".format(split): logits_fake.detach().mean().item(),
                    }
             return d_loss, log
