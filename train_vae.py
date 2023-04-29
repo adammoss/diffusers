@@ -504,7 +504,7 @@ def main(args):
                 sample_size=args.resolution,
                 in_channels=in_channels,
                 out_channels=out_channels,
-                latent_channels=3,
+                latent_channels=16,
                 scaling_factor=0.18215,
                 layers_per_block=2,
                 block_out_channels=(128, 256),
@@ -516,7 +516,7 @@ def main(args):
                     "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
                 ),
-                num_vq_embeddings=8192,
+                num_vq_embeddings=64,
             )
     else:
         config = VAEModel.load_config(args.model_config_name_or_path)
