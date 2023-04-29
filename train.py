@@ -34,7 +34,6 @@ from diffusers.utils.import_utils import is_xformers_available
 from pipelines import DDPMConditionPipeline
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset, get_low_resolution
 
-
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.15.0.dev0")
 
