@@ -516,7 +516,7 @@ def main(args):
                     "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
                 ),
-                num_vq_embeddings=128,
+                num_vq_embeddings=8192,
             )
     else:
         config = VAEModel.load_config(args.model_config_name_or_path)
