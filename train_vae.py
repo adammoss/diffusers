@@ -84,6 +84,11 @@ def parse_args():
         default=1.0,
     )
     parser.add_argument(
+        "--perceptual_weight",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
         "--train_data_dir",
         type=str,
         default=None,
@@ -497,23 +502,19 @@ def main(args):
                 sample_size=args.resolution,
                 in_channels=in_channels,
                 out_channels=out_channels,
-                latent_channels=4,
+                latent_channels=3,
                 scaling_factor=0.18215,
                 layers_per_block=2,
-                block_out_channels=(128, 256, 512, 512),
+                block_out_channels=(128, 256),
                 down_block_types=(
-                    "DownEncoderBlock2D",
-                    "DownEncoderBlock2D",
                     "DownEncoderBlock2D",
                     "DownEncoderBlock2D",
                 ),
                 up_block_types=(
                     "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
-                    "UpDecoderBlock2D",
-                    "UpDecoderBlock2D",
                 ),
-                num_vq_embeddings=8192,
+                num_vq_embeddings=128,
             )
     else:
         config = VAEModel.load_config(args.model_config_name_or_path)
@@ -523,9 +524,11 @@ def main(args):
     if args.loss == 'lpips':
         if args.vae == 'kl':
             loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
+                                             perceptual_weight=args.perceptual_weight,
                                              disc_weight=args.disc_weight, disc_in_channels=in_channels)
         elif args.vae == 'vq':
             loss_fn = VQLPIPSWithDiscriminator(args.disc_start, codebook_weight=args.codebook_weight,
+                                               perceptual_weight=args.perceptual_weight,
                                                disc_in_channels=in_channels, disc_weight=args.disc_weight)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
