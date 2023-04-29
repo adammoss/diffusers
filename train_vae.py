@@ -24,12 +24,14 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 import diffusers
-from diffusers import AutoencoderKL, VQModel
+from diffusers import AutoencoderKL
 from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset
 from losses import LPIPSWithDiscriminator, VQLPIPSWithDiscriminator
+# This version of VQModel has commitment loss term fixed
+from models import VQModel
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
