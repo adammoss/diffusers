@@ -707,10 +707,10 @@ def main(args):
                 reconstructions = model.decoder(quant)
 
                 aeloss, log_dict_ae = loss_fn(emb_loss, inputs, reconstructions, 0, global_step,
-                                              last_layer=last_layer, split="train")
+                                              last_layer=last_layer, split="test")
 
                 discloss, log_dict_disc = loss_fn(emb_loss, inputs, reconstructions, 1, global_step,
-                                                  last_layer=last_layer, split="train")
+                                                  last_layer=last_layer, split="test")
 
             # Gather the losses across all processes for logging (if we use distributed training).
             avg_loss = accelerator.gather(aeloss.repeat(args.eval_batch_size)).mean()
