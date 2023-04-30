@@ -86,6 +86,11 @@ def parse_args():
         default=0.5,
     )
     parser.add_argument(
+        "--disc_start",
+        type=int,
+        default=50000,
+    )
+    parser.add_argument(
         "--codebook_weight",
         type=float,
         default=1.0,
