@@ -66,7 +66,7 @@ def parse_args():
         help="The config of the VAE model to train, leave as None to use standard configuration.",
     )
     parser.add_argument(
-        "--num_vq_embedding",
+        "--num_vq_embeddings",
         type=int,
         default=128,
     )
