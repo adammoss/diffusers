@@ -541,7 +541,7 @@ def main(args):
         elif args.vae == 'vq':
             loss_fn = VQLPIPSWithDiscriminator(args.disc_start, codebook_weight=args.codebook_weight,
                                                perceptual_weight=args.perceptual_weight,
-                                               disc_in_channels=in_channels, disc_weight=args.disc_weight)
+                                               disc_weight=args.disc_weight, disc_in_channels=in_channels)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
