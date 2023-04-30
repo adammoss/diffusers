@@ -66,9 +66,14 @@ def parse_args():
         help="The config of the VAE model to train, leave as None to use standard configuration.",
     )
     parser.add_argument(
-        "--disc_start",
+        "--num_vq_embedding",
         type=int,
-        default=50001,
+        default=128,
+    )
+    parser.add_argument(
+        "--latent_channels",
+        type=int,
+        default=3,
     )
     parser.add_argument(
         "--kl_weight",
@@ -482,7 +487,7 @@ def main(args):
                 sample_size=args.resolution,
                 in_channels=in_channels,
                 out_channels=out_channels,
-                latent_channels=4,
+                latent_channels=args.latent_channels,
                 scaling_factor=0.18215,
                 layers_per_block=2,
                 block_out_channels=(128, 256, 512, 512),
@@ -504,7 +509,7 @@ def main(args):
                 sample_size=args.resolution,
                 in_channels=in_channels,
                 out_channels=out_channels,
-                latent_channels=16,
+                latent_channels=args.latent_channels,
                 scaling_factor=0.18215,
                 layers_per_block=2,
                 block_out_channels=(128, 256),
@@ -516,7 +521,7 @@ def main(args):
                     "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
                 ),
-                num_vq_embeddings=64,
+                num_vq_embeddings=args.num_vq_embeddings,
             )
     else:
         config = VAEModel.load_config(args.model_config_name_or_path)
