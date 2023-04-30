@@ -519,7 +519,12 @@ def main(args):
         elif accelerator.mixed_precision == "bf16":
             weight_dtype = torch.bfloat16
         vae.to(accelerator.device, dtype=weight_dtype)
-        latent_shape = vae.encode(torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latent_dist.sample().size()
+        if 'kl' in args.vae_model:
+            latent_shape = vae.encode(
+                torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latent_dist.sample().size()
+        elif 'vq' in args.vae_model:
+            latent_shape = vae.encode(
+                torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latents.size()
         sample_size = latent_shape[2]
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
