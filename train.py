@@ -495,6 +495,8 @@ def main(args):
         dataset.set_transform(transform_images)
 
     d = dataset[0]
+    data_in_channels = d["input"].size()[0]
+    data_out_channels = d["input"].size()[0]
 
     if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
@@ -535,8 +537,8 @@ def main(args):
     else:
         vae = None
         sample_size = args.resolution
-        in_channels = d["input"].size()[0]
-        out_channels = d["input"].size()[0]
+        in_channels = data_in_channels
+        out_channels = data_out_channels
 
     # Initialize the model
     if args.model_config_name_or_path is None:
@@ -713,7 +715,7 @@ def main(args):
 
             if vae is not None:
                 inputs = batch["input"]
-                if model.config.in_channels == 3 and in_channels == 1:
+                if model.config.in_channels == 3 and data_in_channels == 1:
                     inputs = torch.cat([inputs, inputs, inputs], dim=1)
                 clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
                 clean_images = clean_images * vae.config.scaling_factor
