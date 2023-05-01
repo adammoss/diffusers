@@ -533,11 +533,11 @@ def main(args):
         if args.vae == 'kl':
             loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
                                              perceptual_weight=args.perceptual_weight,
-                                             disc_weight=args.disc_weight, disc_in_channels=in_channels)
+                                             disc_weight=args.disc_weight, disc_in_channels=model.config.in_channels)
         elif args.vae == 'vq':
             loss_fn = VQLPIPSWithDiscriminator(args.disc_start, codebook_weight=args.codebook_weight,
                                                perceptual_weight=args.perceptual_weight,
-                                               disc_weight=args.disc_weight, disc_in_channels=in_channels)
+                                               disc_weight=args.disc_weight, disc_in_channels=model.config.in_channels)
     else:
         raise ValueError(f"Unsupported loss type: {args.loss}")
 
@@ -619,6 +619,9 @@ def main(args):
             inputs = batch["input"]
 
             last_layer = model.decoder.conv_out.weight
+
+            if model.config.in_channels == 3 and in_channels == 1:
+                inputs = torch.cat([inputs, inputs, inputs], dim=1)
 
             with accelerator.accumulate(model):
 
