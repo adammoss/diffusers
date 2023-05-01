@@ -1,6 +1,7 @@
 # Calculate 1D power spectrum. From https://github.com/nmudur/diffusion-models-astrophysical-fields-mlps
 
 import numpy as np
+from quantimpy import minkowski as mk
 
 
 def calc_1dps_img2d(img, smoothed=0.5):
@@ -14,3 +15,13 @@ def calc_1dps_img2d(img, smoothed=0.5):
     filt = lambda r: impf[(R >= r - smoothed) & (R < r + smoothed)].mean()
     mean = np.vectorize(filt)(kvals)
     return kvals, mean
+
+
+def get_minkowski(img, min=-1, max=1):
+    img = np.squeeze(img)
+    gs_vals = np.linspace(min, max, 50)
+    gs_masks = [img >= gs_vals[ig] for ig in range(len(gs_vals))]
+    minkowski = []
+    for i in range(len(gs_masks)):
+        minkowski.append(mk.functionals(gs_masks[i], norm=True))
+    return np.vstack(minkowski)
