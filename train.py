@@ -511,6 +511,8 @@ def main(args):
             vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
         elif 'vq' in args.vae_model:
             vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+        else:
+            vae = AutoencoderKL.from_pretrained(args.vae_model)
         # Freeze the VAE
         vae.requires_grad_(False)
         weight_dtype = torch.float32
@@ -519,12 +521,14 @@ def main(args):
         elif accelerator.mixed_precision == "bf16":
             weight_dtype = torch.bfloat16
         vae.to(accelerator.device, dtype=weight_dtype)
-        if 'kl' in args.vae_model:
+        if 'vq' in args.vae_model:
             latent_shape = vae.encode(
-                torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latent_dist.sample().size()
-        elif 'vq' in args.vae_model:
+                torch.rand((1, vae.config.in_channels, args.resolution, args.resolution)).to(accelerator.device,
+                                                                                             dtype=weight_dtype)).latents.size()
+        else:
             latent_shape = vae.encode(
-                torch.rand((1, 1, args.resolution, args.resolution)).to(accelerator.device, dtype=weight_dtype)).latents.size()
+                torch.rand((1, vae.config.in_channels, args.resolution, args.resolution)).to(accelerator.device,
+                                                                                             dtype=weight_dtype)).latent_dist.sample().size()
         sample_size = latent_shape[2]
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
@@ -708,7 +712,10 @@ def main(args):
                 continue
 
             if vae is not None:
-                clean_images = vae.encode(batch["input"].to(weight_dtype)).latent_dist.sample()
+                inputs = batch["input"]
+                if model.config.in_channels == 3 and in_channels == 1:
+                    inputs = torch.cat([inputs, inputs, inputs], dim=1)
+                clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
                 clean_images = clean_images * vae.config.scaling_factor
             else:
                 clean_images = batch["input"]
