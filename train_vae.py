@@ -495,16 +495,12 @@ def main(args):
                 latent_channels=args.latent_channels,
                 scaling_factor=0.18215,
                 layers_per_block=2,
-                block_out_channels=(128, 256, 512, 512),
+                block_out_channels=(128, 256),
                 down_block_types=(
-                    "DownEncoderBlock2D",
-                    "DownEncoderBlock2D",
                     "DownEncoderBlock2D",
                     "DownEncoderBlock2D",
                 ),
                 up_block_types=(
-                    "UpDecoderBlock2D",
-                    "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
                     "UpDecoderBlock2D",
                 ),
