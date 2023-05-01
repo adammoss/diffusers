@@ -66,6 +66,11 @@ def parse_args():
         help="The config of the VAE model to train, leave as None to use standard configuration.",
     )
     parser.add_argument(
+        "--model_from_pretrained",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
         "--num_vq_embeddings",
         type=int,
         default=128,
@@ -486,7 +491,9 @@ def main(args):
     )
 
     # Initialize the model
-    if args.model_config_name_or_path is None:
+    if args.model_from_pretrained is not None:
+        model = VAEModel.from_pretrained(args.model_from_pretrained)
+    elif args.model_config_name_or_path is None:
         if args.vae == 'kl':
             model = VAEModel(
                 sample_size=args.resolution,
