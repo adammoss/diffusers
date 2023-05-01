@@ -715,7 +715,8 @@ def main(args):
 
             if vae is not None:
                 inputs = batch["input"]
-                if model.config.in_channels == 3 and data_in_channels == 1:
+                print(vae.config.in_channels, data_in_channels)
+                if vae.config.in_channels == 3 and data_in_channels == 1:
                     inputs = torch.cat([inputs, inputs, inputs], dim=1)
                 clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
                 clean_images = clean_images * vae.config.scaling_factor
