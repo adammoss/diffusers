@@ -702,6 +702,9 @@ def main(args):
         for step, batch in enumerate(test_dataloader):
             inputs = batch["input"]
 
+            if model.config.in_channels == 3 and in_channels == 1:
+                inputs = torch.cat([inputs, inputs, inputs], dim=1)
+
             last_layer = model.decoder.conv_out.weight
 
             if args.vae == 'kl':
