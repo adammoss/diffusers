@@ -713,10 +713,12 @@ def main(args):
                     progress_bar.update(1)
                 continue
 
+            average_channels = False
             if vae is not None:
                 inputs = batch["input"]
                 if vae.config.in_channels == 3 and data_in_channels == 1:
                     inputs = torch.cat([inputs, inputs, inputs], dim=1)
+                    average_channels = True
                 clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
                 clean_images = clean_images * vae.config.scaling_factor
             else:
@@ -825,6 +827,7 @@ def main(args):
                         output_type="numpy",
                         encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1],
                         vae=vae,
+                        average_channels=average_channels,
                     ).images
                 else:
                     if "conditional_input" in batch:
@@ -835,6 +838,7 @@ def main(args):
                             output_type="numpy",
                             conditional_image=conditional_test,
                             vae=vae,
+                            average_channels=average_channels,
                         ).images
                     else:
                         images = pipeline(
@@ -843,6 +847,7 @@ def main(args):
                             num_inference_steps=args.ddpm_num_inference_steps,
                             output_type="numpy",
                             vae=vae,
+                            average_channels=average_channels,
                         ).images
 
                 if args.use_ema:
