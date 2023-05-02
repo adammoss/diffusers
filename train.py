@@ -543,6 +543,7 @@ def main(args):
     # Initialize the model
     if args.model_config_name_or_path is None:
         if args.conditional:
+            # Base model from SD
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
@@ -564,6 +565,7 @@ def main(args):
                 )
             )
         else:
+            # Base model from https://github.com/huggingface/diffusers/blob/main/examples/unconditional_image_generation/train_unconditional.py
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
