@@ -4,7 +4,7 @@
   "act_fn": "silu",
   "addition_embed_type": null,
   "addition_embed_type_num_heads": 64,
-  "attention_head_dim": 8,
+  "attention_head_dim": 1,
   "block_out_channels": [
     32,
     64,
@@ -16,7 +16,7 @@
   "class_embeddings_concat": false,
   "conv_in_kernel": 3,
   "conv_out_kernel": 3,
-  "cross_attention_dim": 128,
+  "cross_attention_dim": 8,
   "cross_attention_norm": null,
   "down_block_types": [
     "CrossAttnDownBlock2D",
