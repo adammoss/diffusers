@@ -493,8 +493,13 @@ def main(args):
     # Initialize the model
     if args.model_from_pretrained is not None:
         model = VAEModel.from_pretrained(args.model_from_pretrained)
+        model.encoder.requires_grad_(False)
+        model.quant_conv.requires_grad_(False)
+        model.post_quant_conv.requires_grad_(False)
+        if hasattr(model, "quantize"):
+            model.quantize.requires_grad_(False)
     elif args.model_config_name_or_path is None:
-        if args.vae == 'kl':
+        if args.vae == "kl":
             model = VAEModel(
                 sample_size=args.resolution,
                 in_channels=in_channels,
@@ -512,7 +517,7 @@ def main(args):
                     "UpDecoderBlock2D",
                 ),
             )
-        elif args.vae == 'vq':
+        elif args.vae == "vq":
             model = VAEModel(
                 sample_size=args.resolution,
                 in_channels=in_channels,
