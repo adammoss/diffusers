@@ -416,28 +416,6 @@ def main(args):
         datasets.utils.logging.set_verbosity_error()
         diffusers.utils.logging.set_verbosity_error()
 
-    # Handle the repository creation
-    if accelerator.is_main_process:
-        if args.push_to_hub:
-            if args.hub_model_id is None:
-                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-            else:
-                repo_name = args.hub_model_id
-            create_repo(repo_name, exist_ok=True, token=args.hub_token)
-            repo = Repository(args.output_dir, clone_from=repo_name, token=args.hub_token)
-
-            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
-                if "step_*" not in gitignore:
-                    gitignore.write("step_*\n")
-                if "epoch_*" not in gitignore:
-                    gitignore.write("epoch_*\n")
-
-        elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
-
-        with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
-            json.dump(vars(args), file, indent=4)
-
     # Get the datasets: you can either provide your own training and evaluation files (see below)
     # or specify a Dataset from the hub (the dataset will be downloaded automatically from the datasets Hub).
 
@@ -513,6 +491,29 @@ def main(args):
         dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers
     )
 
+    # Handle the repository creation
+    if accelerator.is_main_process:
+        if args.push_to_hub:
+            if args.hub_model_id is None:
+                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
+            else:
+                repo_name = args.hub_model_id
+            create_repo(repo_name, exist_ok=True, token=args.hub_token)
+            repo = Repository(args.output_dir, clone_from=repo_name, token=args.hub_token)
+
+            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
+                if "step_*" not in gitignore:
+                    gitignore.write("step_*\n")
+                if "epoch_*" not in gitignore:
+                    gitignore.write("epoch_*\n")
+
+        elif args.output_dir is not None:
+            os.makedirs(args.output_dir, exist_ok=True)
+
+        with open(os.path.join(args.output_dir, "params.json"), "w+") as file:
+            json.dump(vars(args), file, indent=4)
+
+    # Initialize the VAE if given
     if args.vae_model is not None:
         if 'kl' in args.vae_model:
             vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
