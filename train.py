@@ -93,7 +93,7 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
-        "--scaling_factor",
+        "--vae_scaling_factor",
         type=float,
         default=None,
     )
@@ -539,8 +539,8 @@ def main(args):
         sample_size = latent_shape[2]
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
-        if args.scaling_factor is not None:
-            accelerator.print('VAE scaling factor: %s' % args.scaling_factor)
+        if args.vae_scaling_factor is not None:
+            accelerator.print('VAE scaling factor: %s' % args.vae_scaling_factor)
         else:
             accelerator.print('VAE scaling factor: %s' % vae.config.scaling_factor)
     else:
@@ -731,8 +731,8 @@ def main(args):
                     inputs = torch.cat([inputs, inputs, inputs], dim=1)
                     average_channels = True
                 clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
-                if args.scaling_factor is not None:
-                    clean_images = clean_images * args.scaling_factor
+                if args.vae_scaling_factor is not None:
+                    clean_images = clean_images * args.vae_scaling_factor
                 else:
                     clean_images = clean_images * vae.config.scaling_factor
             else:
@@ -842,7 +842,7 @@ def main(args):
                         encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1],
                         vae=vae,
                         average_channels=average_channels,
-                        scaling_factor=args.scaling_factor,
+                        vae_scaling_factor=args.vae_scaling_factor,
                     ).images
                 else:
                     if "conditional_input" in batch:
@@ -854,7 +854,7 @@ def main(args):
                             conditional_image=conditional_test,
                             vae=vae,
                             average_channels=average_channels,
-                            scaling_factor=args.scaling_factor,
+                            vae_scaling_factor=args.vae_scaling_factor,
                         ).images
                     else:
                         images = pipeline(
@@ -864,7 +864,7 @@ def main(args):
                             output_type="numpy",
                             vae=vae,
                             average_channels=average_channels,
-                            scaling_factor=args.scaling_factor,
+                            vae_scaling_factor=args.vae_scaling_factor,
                         ).images
 
                 if args.use_ema:
