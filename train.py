@@ -534,6 +534,7 @@ def main(args):
         sample_size = latent_shape[2]
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
+        accelerator.print('VAE scaling factor: %s' % vae.config.scaling_factor)
     else:
         vae = None
         sample_size = args.resolution
