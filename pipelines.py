@@ -36,6 +36,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         conditional_image: Optional[torch.FloatTensor] = None,
         vae: Optional[AutoencoderKL] = None,
         average_channels: bool = False,
+        scaling_factor: Optional[float] = None
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -117,7 +118,10 @@ class DDPMConditionPipeline(DiffusionPipeline):
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
 
         if vae is not None:
-            image = 1 / vae.config.scaling_factor * image
+            if scaling_factor is not None:
+                image = 1 / scaling_factor * image
+            else:
+                image = 1 / vae.config.scaling_factor * image
             image = vae.decode(image).sample
             if average_channels:
                 image = image.mean(keepdim=True, dim=1)
