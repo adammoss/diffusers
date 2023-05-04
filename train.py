@@ -516,13 +516,21 @@ def main(args):
     # Initialize the VAE if given
     if args.vae_model is not None:
         if 'kl' in args.vae_model:
-            vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae", scaling_factor=args.vae_scaling_factor)
-            print(vae.config)
+            if args.vae_scaling_factor is not None:
+                vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae",
+                                                    scaling_factor=args.vae_scaling_factor)
+            else:
+                vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
         elif 'vq' in args.vae_model:
-            vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+            if args.vae_scaling_factor is not None:
+                vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae", scaling_factor=args.vae_scaling_factor)
+            else:
+                vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
         else:
-            vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
-            print(vae.config)
+            if args.vae_scaling_factor is not None:
+                vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
+            else:
+                vae = AutoencoderKL.from_pretrained(args.vae_model)
         # Freeze the VAE
         vae.requires_grad_(False)
         weight_dtype = torch.float32
@@ -542,8 +550,6 @@ def main(args):
         sample_size = latent_shape[2]
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
-        if args.vae_scaling_factor is not None:
-            vae.config.scaling_factor = args.vae_scaling_factor
         accelerator.print('VAE scaling factor: %s' % vae.config.scaling_factor)
     else:
         vae = None
