@@ -521,7 +521,8 @@ def main(args):
         elif 'vq' in args.vae_model:
             vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
         else:
-            vae = AutoencoderKL.from_pretrained(args.vae_model)
+            vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
+            print(vae.config)
         # Freeze the VAE
         vae.requires_grad_(False)
         weight_dtype = torch.float32
