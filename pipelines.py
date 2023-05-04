@@ -19,9 +19,12 @@ class DDPMConditionPipeline(DiffusionPipeline):
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
 
-    def __init__(self, unet, scheduler):
+    def __init__(self, unet, scheduler, vae=None):
         super().__init__()
-        self.register_modules(unet=unet, scheduler=scheduler)
+        if vae is not None:
+            self.register_modules(unet=unet, scheduler=scheduler, vae=vae)
+        else:
+            self.register_modules(unet=unet, scheduler=scheduler)
 
     @torch.no_grad()
     def __call__(
@@ -34,9 +37,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         encoder_hidden_states: List[float] = None,
         image: Optional[torch.FloatTensor] = None,
         conditional_image: Optional[torch.FloatTensor] = None,
-        vae: Optional[AutoencoderKL] = None,
         average_channels: bool = False,
-        vae_scaling_factor: Optional[float] = None
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -117,12 +118,9 @@ class DDPMConditionPipeline(DiffusionPipeline):
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
 
-        if vae is not None:
-            if vae_scaling_factor is not None:
-                image = 1 / vae_scaling_factor * image
-            else:
-                image = 1 / vae.config.scaling_factor * image
-            image = vae.decode(image).sample
+        if self.vae is not None:
+            image = 1 / self.vae.config.scaling_factor * image
+            image = self.vae.decode(image).sample
             if average_channels:
                 image = image.mean(keepdim=True, dim=1)
         image = (image / 2 + 0.5).clamp(0, 1)

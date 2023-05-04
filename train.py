@@ -541,9 +541,8 @@ def main(args):
         in_channels = latent_shape[1]
         out_channels = latent_shape[1]
         if args.vae_scaling_factor is not None:
-            accelerator.print('VAE scaling factor: %s' % args.vae_scaling_factor)
-        else:
-            accelerator.print('VAE scaling factor: %s' % vae.config.scaling_factor)
+            vae.config.scaling_factor = args.vae_scaling_factor
+        accelerator.print('VAE scaling factor: %s' % vae.config.scaling_factor)
     else:
         vae = None
         sample_size = args.resolution
@@ -728,14 +727,11 @@ def main(args):
             average_channels = False
             if vae is not None:
                 inputs = batch["input"]
-                if vae.config.in_channels == 3 and data_in_channels == 1:
-                    inputs = torch.cat([inputs, inputs, inputs], dim=1)
+                if vae.config.in_channels > 1 and data_in_channels == 1:
+                    inputs = torch.cat([inputs] * vae.config.in_channels, dim=1)
                     average_channels = True
                 clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
-                if args.vae_scaling_factor is not None:
-                    clean_images = clean_images * args.vae_scaling_factor
-                else:
-                    clean_images = clean_images * vae.config.scaling_factor
+                clean_images = clean_images * vae.config.scaling_factor
             else:
                 clean_images = batch["input"]
 
@@ -830,6 +826,7 @@ def main(args):
                 pipeline = DDPMConditionPipeline(
                     unet=unet,
                     scheduler=noise_scheduler,
+                    vae=vae,
                 )
 
                 generator = torch.Generator(device=pipeline.device).manual_seed(0)
@@ -841,9 +838,7 @@ def main(args):
                         num_inference_steps=args.ddpm_num_inference_steps,
                         output_type="numpy",
                         encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1],
-                        vae=vae,
                         average_channels=average_channels,
-                        vae_scaling_factor=args.vae_scaling_factor,
                     ).images
                 else:
                     if "conditional_input" in batch:
@@ -853,9 +848,7 @@ def main(args):
                             num_inference_steps=args.ddpm_num_inference_steps,
                             output_type="numpy",
                             conditional_image=conditional_test,
-                            vae=vae,
                             average_channels=average_channels,
-                            vae_scaling_factor=args.vae_scaling_factor,
                         ).images
                     else:
                         images = pipeline(
@@ -863,13 +856,13 @@ def main(args):
                             batch_size=args.eval_batch_size,
                             num_inference_steps=args.ddpm_num_inference_steps,
                             output_type="numpy",
-                            vae=vae,
                             average_channels=average_channels,
-                            vae_scaling_factor=args.vae_scaling_factor,
                         ).images
 
                 if args.use_ema:
                     ema_model.restore(unet.parameters())
+
+                accelerator.log({'sample_mean': images.mean(), 'sample_sd': images.std()}, step=global_step)
 
                 # denormalize the images and save to tensorboard
                 images_processed = (images * 255).round().astype("uint8")
@@ -898,6 +891,7 @@ def main(args):
                 pipeline = DDPMConditionPipeline(
                     unet=unet,
                     scheduler=noise_scheduler,
+                    vae=vae,
                 )
 
                 pipeline.save_pretrained(args.output_dir)
