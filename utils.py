@@ -6,7 +6,8 @@ from pipelines import DDPMConditionPipeline
 from schedulers import RePaintScheduler
 
 
-def generate_samples(model, batch_size=1, device=None, num_inference_steps=None):
+def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
+                     encoder_hidden_states=None):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -17,6 +18,7 @@ def generate_samples(model, batch_size=1, device=None, num_inference_steps=None)
         batch_size=batch_size,
         num_inference_steps=num_inference_steps,
         output_type="numpy",
+        encoder_hidden_states=encoder_hidden_states,
     ).images
     return images
 
