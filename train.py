@@ -516,7 +516,8 @@ def main(args):
     # Initialize the VAE if given
     if args.vae_model is not None:
         if 'kl' in args.vae_model:
-            vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
+            vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae", scaling_factor=args.vae_scaling_factor)
+            print(vae.config)
         elif 'vq' in args.vae_model:
             vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
         else:
