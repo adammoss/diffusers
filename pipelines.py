@@ -19,7 +19,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
 
-    def __init__(self, unet, scheduler, vae=None):
+    def __init__(self, unet, scheduler, vae):
         super().__init__()
         if vae is not None:
             self.register_modules(unet=unet, scheduler=scheduler, vae=vae)
