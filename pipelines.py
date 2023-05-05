@@ -118,7 +118,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
 
-        if self.vae is not None:
+        if hasattr(self, 'vae'):
             image = 1 / self.vae.config.scaling_factor * image
             image = self.vae.decode(image).sample
             if average_channels:
