@@ -1,14 +1,17 @@
 import torch
 
-from diffusers import RePaintPipeline
+from diffusers import DiffusionPipeline, RePaintPipeline
 
-from pipelines import DDPMConditionPipeline
+from pipelines import DDPMConditionPipeline, LatentDDPMConditionPipeline
 from schedulers import RePaintScheduler
 
 
 def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
                      encoder_hidden_states=None):
-    pipeline = DDPMConditionPipeline.from_pretrained(model)
+    if 'vae' in DiffusionPipeline.load_config(model):
+        pipeline = LatentDDPMConditionPipeline.from_pretrained(model)
+    else:
+        pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         pipeline = pipeline.to(device)
