@@ -8,7 +8,8 @@ from schedulers import RePaintScheduler
 
 def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
                      encoder_hidden_states=None):
-    if 'vae' in DiffusionPipeline.load_config(model):
+    config = DiffusionPipeline.load_config(model)
+    if ('vae' in config) or ('vqvae' in config):
         pipeline = LatentDDPMConditionPipeline.from_pretrained(model)
     else:
         pipeline = DDPMConditionPipeline.from_pretrained(model)
