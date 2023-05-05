@@ -31,7 +31,7 @@ from diffusers.training_utils import EMAModel
 from diffusers.utils import check_min_version, is_accelerate_version, is_tensorboard_available, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
-from pipelines import DDPMConditionPipeline
+from pipelines import DDPMConditionPipeline, LatentDDPMConditionPipeline
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset, get_low_resolution
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
@@ -831,11 +831,17 @@ def main(args):
                     ema_model.store(unet.parameters())
                     ema_model.copy_to(unet.parameters())
 
-                pipeline = DDPMConditionPipeline(
-                    unet=unet,
-                    scheduler=noise_scheduler,
-                    vae=vae,
-                )
+                if vae is not None:
+                    pipeline = LatentDDPMConditionPipeline(
+                        unet=unet,
+                        scheduler=noise_scheduler,
+                        vae=vae,
+                    )
+                else:
+                    pipeline = DDPMConditionPipeline(
+                        unet=unet,
+                        scheduler=noise_scheduler,
+                    )
 
                 generator = torch.Generator(device=pipeline.device).manual_seed(0)
                 # run pipeline in inference (sample random noise and denoise)
@@ -896,11 +902,17 @@ def main(args):
                     ema_model.store(unet.parameters())
                     ema_model.copy_to(unet.parameters())
 
-                pipeline = DDPMConditionPipeline(
-                    unet=unet,
-                    scheduler=noise_scheduler,
-                    vae=vae,
-                )
+                if vae is not None:
+                    pipeline = LatentDDPMConditionPipeline(
+                        unet=unet,
+                        scheduler=noise_scheduler,
+                        vae=vae,
+                    )
+                else:
+                    pipeline = DDPMConditionPipeline(
+                        unet=unet,
+                        scheduler=noise_scheduler,
+                    )
 
                 pipeline.save_pretrained(args.output_dir)
 
