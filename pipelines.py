@@ -33,7 +33,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
         encoder_hidden_states: List[float] = None,
         image: Optional[torch.FloatTensor] = None,
         conditional_image: Optional[torch.FloatTensor] = None,
-        average_channels: bool = False,
+        average_out_channels: bool = False,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -114,7 +114,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
 
-        if average_channels:
+        if average_out_channels:
             image = image.mean(keepdim=True, dim=1)
         image = (image / 2 + 0.5).clamp(0, 1)
         image = image.cpu().permute(0, 2, 3, 1).numpy()
@@ -153,7 +153,7 @@ class LatentDDPMConditionPipeline(DiffusionPipeline):
         encoder_hidden_states: List[float] = None,
         image: Optional[torch.FloatTensor] = None,
         conditional_image: Optional[torch.FloatTensor] = None,
-        average_channels: bool = False,
+        average_out_channels: bool = False,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -236,7 +236,7 @@ class LatentDDPMConditionPipeline(DiffusionPipeline):
 
         image = 1 / self.vae.config.scaling_factor * image
         image = self.vae.decode(image).sample
-        if average_channels:
+        if average_out_channels:
             image = image.mean(keepdim=True, dim=1)
         image = (image / 2 + 0.5).clamp(0, 1)
         image = image.cpu().permute(0, 2, 3, 1).numpy()
