@@ -517,15 +517,28 @@ def main(args):
     if args.vae_model is not None:
         if 'kl' in args.vae_model:
             if args.vae_scaling_factor is not None:
-                vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae",
-                                                    scaling_factor=args.vae_scaling_factor)
+                try:
+                    vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae",
+                                                        scaling_factor=args.vae_scaling_factor)
+                except:
+                    vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
             else:
-                vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
+                try:
+                    vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
+                except:
+                    vae = AutoencoderKL.from_pretrained(args.vae_model)
         elif 'vq' in args.vae_model:
             if args.vae_scaling_factor is not None:
-                vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae", scaling_factor=args.vae_scaling_factor)
+                try:
+                    vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae",
+                                                  scaling_factor=args.vae_scaling_factor)
+                except:
+                    vae = VQModel.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
             else:
-                vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+                try:
+                    vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+                except:
+                    vae = VQModel.from_pretrained(args.vae_model)
         else:
             if args.vae_scaling_factor is not None:
                 vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
