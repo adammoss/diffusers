@@ -542,11 +542,11 @@ def main(args):
 
     # Loss
     if args.loss == 'lpips':
-        if args.vae == 'kl':
+        if model.__class__ == AutoencoderKL:
             loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
                                              perceptual_weight=args.perceptual_weight,
                                              disc_weight=args.disc_weight, disc_in_channels=model.config.in_channels)
-        elif args.vae == 'vq':
+        elif model.__class__ == VQModel:
             loss_fn = VQLPIPSWithDiscriminator(args.disc_start, codebook_weight=args.codebook_weight,
                                                perceptual_weight=args.perceptual_weight,
                                                disc_weight=args.disc_weight, disc_in_channels=model.config.in_channels)
@@ -637,7 +637,7 @@ def main(args):
 
             with accelerator.accumulate(model):
 
-                if args.vae == 'kl':
+                if model.__class__ == AutoencoderKL:
 
                     posterior = model.encode(inputs).latent_dist
                     z = posterior.sample()
@@ -649,7 +649,7 @@ def main(args):
                     discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
                                                       last_layer=last_layer, split="train")
 
-                elif args.vae == 'vq':
+                elif model.__class__ == VQModel:
 
                     h = model.encoder(inputs)
                     h = model.quant_conv(h)
@@ -712,7 +712,7 @@ def main(args):
 
             last_layer = model.decoder.conv_out.weight
 
-            if args.vae == 'kl':
+            if model.__class__ == AutoencoderKL:
 
                 posterior = model.encode(inputs).latent_dist
                 z = posterior.sample()
@@ -724,7 +724,7 @@ def main(args):
                 discloss, log_dict_disc = loss_fn(inputs, reconstructions, posterior, 1, global_step,
                                                   last_layer=last_layer, split="test")
 
-            elif args.vae == 'vq':
+            elif model.__class__ == VQModel:
 
                 h = model.encoder(inputs)
                 h = model.quant_conv(h)
@@ -774,9 +774,9 @@ def main(args):
         if accelerator.is_main_process and (epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1):
             # save the model
             vae = accelerator.unwrap_model(model)
-            if args.vae == 'kl':
+            if vae.__class__ == AutoencoderKL:
                 vae.save_pretrained(os.path.join(args.output_dir, 'vae'))
-            elif args.vae == 'vq':
+            elif vae.__class__ == VQModel:
                 vae.save_pretrained(os.path.join(args.output_dir, 'vqvae'))
 
             if args.push_to_hub:
