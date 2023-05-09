@@ -88,7 +88,12 @@ def parse_args():
         help="The config of the UNet model to train, leave as None to use standard DDPM configuration.",
     )
     parser.add_argument(
-        "--vae_model",
+        "--vae",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--vae_from_pretrained",
         type=str,
         default=None,
     )
@@ -514,36 +519,34 @@ def main(args):
             json.dump(vars(args), file, indent=4)
 
     # Initialize the VAE if given
-    if args.vae_model is not None:
-        if 'kl' in args.vae_model:
+    if args.vae_from_pretrained is not None:
+        if args.vae == 'kl':
             if args.vae_scaling_factor is not None:
                 try:
-                    vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae",
+                    vae = AutoencoderKL.from_pretrained(args.vae_from_pretrained, subfolder="vae",
                                                         scaling_factor=args.vae_scaling_factor)
                 except:
-                    vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
+                    vae = AutoencoderKL.from_pretrained(args.vae_from_pretrained,
+                                                        scaling_factor=args.vae_scaling_factor)
             else:
                 try:
-                    vae = AutoencoderKL.from_pretrained(args.vae_model, subfolder="vae")
+                    vae = AutoencoderKL.from_pretrained(args.vae_from_pretrained,
+                                                        subfolder="vae")
                 except:
-                    vae = AutoencoderKL.from_pretrained(args.vae_model)
-        elif 'vq' in args.vae_model:
+                    vae = AutoencoderKL.from_pretrained(args.vae_from_pretrained)
+        elif args.vae == 'vq':
             if args.vae_scaling_factor is not None:
                 try:
-                    vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae",
+                    vae = VQModel.from_pretrained(args.vae_from_pretrained, subfolder="vqvae",
                                                   scaling_factor=args.vae_scaling_factor)
                 except:
-                    vae = VQModel.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
+                    vae = VQModel.from_pretrained(args.vae_from_pretrained,
+                                                  scaling_factor=args.vae_scaling_factor)
             else:
                 try:
-                    vae = VQModel.from_pretrained(args.vae_model, subfolder="vqvae")
+                    vae = VQModel.from_pretrained(args.vae_from_pretrained, subfolder="vqvae")
                 except:
-                    vae = VQModel.from_pretrained(args.vae_model)
-        else:
-            if args.vae_scaling_factor is not None:
-                vae = AutoencoderKL.from_pretrained(args.vae_model, scaling_factor=args.vae_scaling_factor)
-            else:
-                vae = AutoencoderKL.from_pretrained(args.vae_model)
+                    vae = VQModel.from_pretrained(args.vae_from_pretrained)
         # Freeze the VAE
         vae.requires_grad_(False)
         weight_dtype = torch.float32
