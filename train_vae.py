@@ -492,7 +492,12 @@ def main(args):
 
     # Initialize the model
     if args.model_from_pretrained is not None:
-        model = VAEModel.from_pretrained(args.model_from_pretrained)
+        if args.vae == "kl":
+            model = VAEModel.from_pretrained(args.model_from_pretrained, subfolder="vae")
+        elif args.vae == "vq":
+            model = VAEModel.from_pretrained(args.model_from_pretrained, subfolder="vqvae")
+        else:
+            model = VAEModel.from_pretrained(args.model_from_pretrained)
         model.encoder.requires_grad_(False)
         model.quant_conv.requires_grad_(False)
         model.post_quant_conv.requires_grad_(False)
@@ -541,7 +546,7 @@ def main(args):
         model = VAEModel.from_config(config)
 
     # Loss
-    if args.loss == 'lpips':
+    if args.loss == "lpips":
         if model.__class__ == AutoencoderKL:
             loss_fn = LPIPSWithDiscriminator(args.disc_start, kl_weight=args.kl_weight,
                                              perceptual_weight=args.perceptual_weight,
