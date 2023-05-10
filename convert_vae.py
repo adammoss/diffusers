@@ -174,7 +174,6 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_path", default=None, type=str, required=True,
                         help="Path to the VAE.pt to convert.")
     parser.add_argument("--output_path", default=None, type=str, required=True, help="Output path.")
-    parser.add_argument("--image_size", type=int, default=256)
     parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
     parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
 
