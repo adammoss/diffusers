@@ -182,6 +182,5 @@ if __name__ == "__main__":
     vae_to_vae_diffuser(args.config_path,
                         args.checkpoint_path,
                         args.output_path,
-                        args.image_size,
                         args.hub_token,
                         args.push_to_hub)
