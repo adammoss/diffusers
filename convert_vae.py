@@ -115,7 +115,7 @@ def custom_convert_ldm_vae_checkpoint(checkpoint, config):
     return new_checkpoint
 
 
-def create_vae_diffusers_config(original_config, image_size: int):
+def create_vae_diffusers_config(original_config):
     """
     Creates a config for the diffusers based on the config of the LDM model.
     """
@@ -126,7 +126,7 @@ def create_vae_diffusers_config(original_config, image_size: int):
     up_block_types = ["UpDecoderBlock2D"] * len(block_out_channels)
 
     config = {
-        "sample_size": image_size,
+        "sample_size": vae_params.resolution,
         "in_channels": vae_params.in_channels,
         "out_channels": vae_params.out_ch,
         "down_block_types": tuple(down_block_types),
@@ -142,7 +142,6 @@ def vae_to_vae_diffuser(
         config_path: str,
         checkpoint_path: str,
         output_path: str,
-        image_size: int,
         hub_token: str,
         push_to_hub: bool,
 ):
@@ -151,7 +150,7 @@ def vae_to_vae_diffuser(
     checkpoint = torch.load(checkpoint_path, map_location=device)
 
     # Convert the VAE model.
-    vae_config = create_vae_diffusers_config(original_config, image_size=image_size)
+    vae_config = create_vae_diffusers_config(original_config)
     converted_vae_checkpoint = custom_convert_ldm_vae_checkpoint(checkpoint["state_dict"], vae_config)
 
     vae = AutoencoderKL(**vae_config)
