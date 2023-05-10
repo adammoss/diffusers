@@ -7,7 +7,6 @@ from diffusers import AutoencoderKL
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
     assign_to_checkpoint,
     conv_attn_to_linear,
-    create_vae_diffusers_config,
     renew_vae_attention_paths,
     renew_vae_resnet_paths,
 )
@@ -114,6 +113,29 @@ def custom_convert_ldm_vae_checkpoint(checkpoint, config):
     assign_to_checkpoint(paths, new_checkpoint, vae_state_dict, additional_replacements=[meta_path], config=config)
     conv_attn_to_linear(new_checkpoint)
     return new_checkpoint
+
+
+def create_vae_diffusers_config(original_config, image_size: int):
+    """
+    Creates a config for the diffusers based on the config of the LDM model.
+    """
+    vae_params = original_config.model.params.ddconfig
+
+    block_out_channels = [vae_params.ch * mult for mult in vae_params.ch_mult]
+    down_block_types = ["DownEncoderBlock2D"] * len(block_out_channels)
+    up_block_types = ["UpDecoderBlock2D"] * len(block_out_channels)
+
+    config = {
+        "sample_size": image_size,
+        "in_channels": vae_params.in_channels,
+        "out_channels": vae_params.out_ch,
+        "down_block_types": tuple(down_block_types),
+        "up_block_types": tuple(up_block_types),
+        "block_out_channels": tuple(block_out_channels),
+        "latent_channels": vae_params.z_channels,
+        "layers_per_block": vae_params.num_res_blocks,
+    }
+    return config
 
 
 def vae_to_vae_diffuser(
