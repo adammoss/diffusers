@@ -147,11 +147,16 @@ def vae_to_vae_diffuser(
 ):
     original_config = OmegaConf.load(config_path)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print('Loading checkpoint')
     checkpoint = torch.load(checkpoint_path, map_location=device)
+    print('Done')
 
     # Convert the VAE model.
     vae_config = create_vae_diffusers_config(original_config)
+    print(vae_config)
+    print('Converting checkpoint')
     converted_vae_checkpoint = custom_convert_ldm_vae_checkpoint(checkpoint["state_dict"], vae_config)
+    print('Done')
 
     vae = AutoencoderKL(**vae_config)
     vae.load_state_dict(converted_vae_checkpoint)
