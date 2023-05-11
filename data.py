@@ -80,10 +80,8 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
 
     if (accelerator is None or accelerator.is_main_process) and \
             not os.path.isfile(os.path.join(cache_dir, parameter_file)):
-        urllib.request.urlretrieve(
-            'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file,
-            os.path.join(cache_dir, parameter_file)
-        )
+        url = 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/%s' % parameter_file
+        download(url, os.path.join(cache_dir, parameter_file))
 
     if accelerator is not None:
         accelerator.wait_for_everyone()
@@ -120,9 +118,7 @@ def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None, norm_m
 
         if not os.path.isfile(os.path.join(cache_dir, 'dsprites.npy')):
             url = 'https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz?raw=true'
-            print('Downloading %s' % url)
-            urllib.request.urlretrieve(url, os.path.join(cache_dir, 'dsprites.npy'))
-            print('Finished download')
+            download(url, os.path.isfile(os.path.join(cache_dir, 'dsprites.npy')))
 
     if accelerator is not None:
         accelerator.wait_for_everyone()
