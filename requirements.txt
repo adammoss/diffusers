@@ -4,6 +4,7 @@ torch
 torchvision
 requests
 accelerate
+transformers
 datasets
 wandb
 tensorboard
@@ -12,3 +13,4 @@ scikit-learn
 xformers
 quantimpy
 fabric3
+requests

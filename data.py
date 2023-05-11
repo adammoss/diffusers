@@ -1,5 +1,6 @@
 import os
-import urllib
+import requests
+from tqdm import tqdm
 
 import numpy as np
 from skimage.transform import resize, downscale_local_mean, resize_local_mean
@@ -50,6 +51,18 @@ class CustomDataset(Dataset):
         return len(self.data)
 
 
+def download(url, local_path, chunk_size=1024):
+    os.makedirs(os.path.split(local_path)[0], exist_ok=True)
+    with requests.get(url, stream=True) as r:
+        total_size = int(r.headers.get("content-length", 0))
+        with tqdm(total=total_size, unit="B", unit_scale=True) as pbar:
+            with open(local_path, "wb") as f:
+                for data in r.iter_content(chunk_size=chunk_size):
+                    if data:
+                        f.write(data)
+                        pbar.update(chunk_size)
+
+
 def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log,
                     accelerator=None, norm_min=-1, norm_max=1):
     if not os.path.exists(cache_dir):
@@ -58,9 +71,7 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
     if (accelerator is None or accelerator.is_main_process) and \
             not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
         url = 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name
-        print('Downloading %s' % url)
-        urllib.request.urlretrieve(url, os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name))
-        print('Finished download')
+        download(url, os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name))
 
     if 'simba' in dataset_name.lower():
         parameter_file = 'params_SIMBA.txt'
