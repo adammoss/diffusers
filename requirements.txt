@@ -1,4 +1,4 @@
-git+https://github.com/huggingface/diffusers
+diffusers==0.16.1
 taming-transformers
 torch
 torchvision
