@@ -869,6 +869,7 @@ def main(args):
                     for i in range(args.eval_batch_size):
                         encoder_hidden_states.append([i / (args.eval_batch_size - 1)] * dataset[0]["parameters"].size()[1])
                     images = pipeline(
+                        batch_size=len(encoder_hidden_states),
                         generator=generator,
                         num_inference_steps=args.ddpm_num_inference_steps,
                         output_type="numpy",
