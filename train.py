@@ -88,6 +88,11 @@ def parse_args():
         help="The config of the UNet model to train, leave as None to use standard DDPM configuration.",
     )
     parser.add_argument(
+        "--base_channels",
+        type=int,
+        default=128,
+    )
+    parser.add_argument(
         "--vae",
         type=str,
         default=None,
@@ -576,14 +581,15 @@ def main(args):
     # Initialize the model
     if args.model_config_name_or_path is None:
         if args.conditional:
-            # Base model from SD but with 1/2 base channel number
+            # Base model from SD but with variable base channel number
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
-                block_out_channels=(128, 256, 512, 512),
-                cross_attention_dim=512,
+                block_out_channels=(args.base_channels, 2 * args.base_channels, 4 * args.base_channels,
+                                    4 * args.base_channels),
+                cross_attention_dim=4 * args.base_channels,
                 down_block_types=(
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
@@ -604,7 +610,8 @@ def main(args):
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 layers_per_block=2,
-                block_out_channels=(128, 128, 256, 256, 512, 512),
+                block_out_channels=(args.base_channels, args.base_channels, 2 * args.base_channels,
+                                    2 * args.base_channels, 4 * args.base_channels, 4 * args.base_channels),
                 down_block_types=(
                     "DownBlock2D",
                     "DownBlock2D",
