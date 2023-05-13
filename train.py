@@ -576,14 +576,14 @@ def main(args):
     # Initialize the model
     if args.model_config_name_or_path is None:
         if args.conditional:
-            # Base model from SD
+            # Base model from SD but with 1/2 base channel number
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
-                block_out_channels=(128, 256, 512, 512),
-                cross_attention_dim=512,
+                block_out_channels=(64, 128, 256, 256),
+                cross_attention_dim=256,
                 down_block_types=(
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
