@@ -357,7 +357,7 @@ def main(args):
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision=args.mixed_precision,
         log_with=args.logger,
-        project_dir=logging_dir,
+        logging_dir=logging_dir,
         project_config=accelerator_project_config,
     )
 
@@ -865,12 +865,14 @@ def main(args):
                 generator = torch.Generator(device=pipeline.device).manual_seed(0)
                 # run pipeline in inference (sample random noise and denoise)
                 if args.conditional:
+                    encoder_hidden_states = []
+                    for i in range(args.eval_batch_size):
+                        encoder_hidden_states.append([i / (args.eval_batch_size - 1)] * dataset[0]["parameters"].size()[1])
                     images = pipeline(
                         generator=generator,
-                        batch_size=args.eval_batch_size,
                         num_inference_steps=args.ddpm_num_inference_steps,
                         output_type="numpy",
-                        encoder_hidden_states=[0.5] * dataset[0]["parameters"].size()[1],
+                        encoder_hidden_states=encoder_hidden_states,
                         average_out_channels=average_out_channels,
                     ).images
                 else:
