@@ -63,6 +63,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
+        action='append',
         default=None,
         help=(
             "The name of the Dataset (from the HuggingFace hub) to train on (could be your own, possibly private,"
@@ -350,7 +351,7 @@ def main(args):
         if args.use_ema:
             args.output_dir += "-ema"
         args.output_dir += '-%s' % args.resolution
-        args.output_dir += '-' + args.dataset_name.replace("_", "-")
+        args.output_dir += '-' + '-'.join(args.dataset_name).replace("_", "-")
         if args.conditional:
             args.output_dir += "-cond"
         if args.super_resolution is not None:
@@ -437,19 +438,40 @@ def main(args):
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
 
-    if 'simba' in args.dataset_name.lower() or 'illustris' in args.dataset_name.lower():
+    if 'simba' in args.dataset_name[0].lower() or 'illustris' in args.dataset_name[0].lower():
 
-        X, Y = get_cmd_dataset(args.dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
-                               data_size=args.data_size, transform=np.log, accelerator=accelerator)
-        if args.dataset_conditional_name is not None:
-            X_conditional, Y_conditional = get_cmd_dataset(args.dataset_conditional_name, cache_dir=args.cache_dir,
-                                                           resolution=args.resolution, data_size=args.data_size,
-                                                           transform=np.log, accelerator=accelerator)
-        elif args.super_resolution is not None:
-            X_conditional = get_low_resolution(X, args.super_resolution)
+        if len(args.dataset_name) == 1:
+
+            X, Y = get_cmd_dataset(args.dataset_name[0], cache_dir=args.cache_dir, resolution=args.resolution,
+                                   data_size=args.data_size, transform=np.log, accelerator=accelerator)
+            if args.dataset_conditional_name is not None:
+                X_conditional, Y_conditional = get_cmd_dataset(args.dataset_conditional_name, cache_dir=args.cache_dir,
+                                                               resolution=args.resolution, data_size=args.data_size,
+                                                               transform=np.log, accelerator=accelerator)
+            elif args.super_resolution is not None:
+                X_conditional = get_low_resolution(X, args.super_resolution)
+            else:
+                X_conditional = None
+            dataset = CustomDataset(X, Y, augment=True, data_conditional=X_conditional)
+
         else:
-            X_conditional = None
-        dataset = CustomDataset(X, Y, augment=True, data_conditional=X_conditional)
+
+            if args.dataset_conditional_name is not None or args.super_resolution is not None:
+                raise ValueError("Num datasets > 1 not compatible with conditional data")
+
+            data = []
+            for i, dataset_name in enumerate(args.dataset_name):
+                X, Y = get_cmd_dataset(dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
+                                       data_size=args.data_size, transform=np.log, accelerator=accelerator)
+                if len(args.dataset_name) == 2:
+                    Y_class = np.ones((Y.shape[0], 1, 1)) * i
+                    Y = np.concatenate((Y, Y_class), axis=2)
+                data.append([X, Y])
+
+            X = np.concatenate([d[0] for d in data], axis=0)
+            Y = np.concatenate([d[1] for d in data], axis=0)
+
+            dataset = CustomDataset(X, Y, augment=True)
 
     elif args.dataset_name == 'dsprites':
 
