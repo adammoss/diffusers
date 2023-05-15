@@ -93,6 +93,11 @@ def parse_args():
         default=128,
     )
     parser.add_argument(
+        "--cross_attention_dim",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
         "--vae",
         type=str,
         default=None,
@@ -582,6 +587,10 @@ def main(args):
     if args.model_config_name_or_path is None:
         if args.conditional:
             # Base model from SD but with variable base channel number
+            if args.cross_attention_dim is not None:
+                cross_attention_dim = args.cross_attention_dim
+            else:
+                cross_attention_dim = 4 * args.base_channels
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
@@ -589,7 +598,7 @@ def main(args):
                 encoder_hid_dim=dataset[0]["parameters"].size()[1],
                 block_out_channels=(args.base_channels, 2 * args.base_channels, 4 * args.base_channels,
                                     4 * args.base_channels),
-                cross_attention_dim=4 * args.base_channels,
+                cross_attention_dim=cross_attention_dim,
                 down_block_types=(
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
