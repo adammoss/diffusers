@@ -904,8 +904,17 @@ def main(args):
                 # run pipeline in inference (sample random noise and denoise)
                 if args.conditional:
                     encoder_hidden_states = []
-                    for i in range(args.eval_batch_size):
-                        encoder_hidden_states.append([i / (args.eval_batch_size - 1)] * dataset[0]["parameters"].size()[1])
+                    if len(args.dataset_name) == 1:
+                        for i in range(args.eval_batch_size):
+                            encoder_hidden_states.append(
+                                [i / (args.eval_batch_size - 1)] * dataset[0]["parameters"].size()[1])
+                    else:
+                        for i in range(args.eval_batch_size / 2):
+                            encoder_hidden_states.append(
+                                [i / (args.eval_batch_size / 2 - 1)] * dataset[0]["parameters"].size()[1] + [0])
+                        for i in range(args.eval_batch_size / 2):
+                            encoder_hidden_states.append(
+                                [i / (args.eval_batch_size / 2 - 1)] * dataset[0]["parameters"].size()[1] + [1])
                     images = pipeline(
                         batch_size=len(encoder_hidden_states),
                         generator=generator,
