@@ -7,7 +7,7 @@ from schedulers import RePaintScheduler
 
 
 def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
-                     encoder_hidden_states=None, average_out_channels=False):
+                     encoder_hidden_states=None, average_out_channels=False, generator=None):
     config = DiffusionPipeline.load_config(model)
     if ('vae' in config) or ('vqvae' in config):
         pipeline = LatentDDPMConditionPipeline.from_pretrained(model)
@@ -24,11 +24,12 @@ def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
         output_type="numpy",
         encoder_hidden_states=encoder_hidden_states,
         average_out_channels=average_out_channels,
+        generator=generator,
     ).images
     return images
 
 
-def inpaint(model, images, mask, device=None, num_inference_steps=None):
+def inpaint(model, images, mask, device=None, num_inference_steps=None, generator=None):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     scheduler = RePaintScheduler.from_config(pipeline.scheduler.config)
     pipeline = RePaintPipeline.from_pretrained(model, scheduler=scheduler)
@@ -44,12 +45,13 @@ def inpaint(model, images, mask, device=None, num_inference_steps=None):
         eta=0.0,
         jump_length=10,
         jump_n_sample=10,
-        output_type="numpy"
+        output_type="numpy",
+        generator=generator,
     ).images
     return images
 
 
-def img2img(model, images, device=None, num_inference_steps=None, batch_size=1):
+def img2img(model, images, device=None, num_inference_steps=None, batch_size=1, generator=None):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -60,6 +62,7 @@ def img2img(model, images, device=None, num_inference_steps=None, batch_size=1):
         batch_size=batch_size,
         num_inference_steps=num_inference_steps,
         output_type="numpy",
-        conditional_image=torch.from_numpy(images)
+        conditional_image=torch.from_numpy(images),
+        generator=generator,
     ).images
     return images
