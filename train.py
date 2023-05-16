@@ -905,21 +905,24 @@ def main(args):
                         scheduler=noise_scheduler,
                     )
 
-                generator = torch.Generator(device=pipeline.device).manual_seed(0)
                 # run pipeline in inference (sample random noise and denoise)
                 if args.conditional:
+                    generator = []
                     encoder_hidden_states = []
                     if len(args.dataset_name) == 1:
                         for i in range(args.eval_batch_size):
                             encoder_hidden_states.append(
                                 [i / (args.eval_batch_size - 1)] * dataset[0]["parameters"].size()[1])
+                            generator.append(torch.Generator(device=pipeline.device).manual_seed(i))
                     else:
                         for i in range(args.eval_batch_size)[:args.eval_batch_size//2]:
                             encoder_hidden_states.append(
                                 [i / (args.eval_batch_size / 2 - 1)] * (dataset[0]["parameters"].size()[1] - 1) + [0])
+                            generator.append(torch.Generator(device=pipeline.device).manual_seed(i))
                         for i in range(args.eval_batch_size)[args.eval_batch_size//2:]:
                             encoder_hidden_states.append(
                                 [i / (args.eval_batch_size / 2 - 1)] * (dataset[0]["parameters"].size()[1] - 1) + [1])
+                            generator.append(torch.Generator(device=pipeline.device).manual_seed(i))
                     images = pipeline(
                         batch_size=len(encoder_hidden_states),
                         generator=generator,
@@ -929,6 +932,7 @@ def main(args):
                         average_out_channels=average_out_channels,
                     ).images
                 else:
+                    generator = torch.Generator(device=pipeline.device).manual_seed(0)
                     if "conditional_input" in batch:
                         images = pipeline(
                             generator=generator,
