@@ -911,10 +911,10 @@ def main(args):
                     else:
                         for i in range(args.eval_batch_size / 2):
                             encoder_hidden_states.append(
-                                [i / (args.eval_batch_size / 2 - 1)] * dataset[0]["parameters"].size()[1] + [0])
+                                [i / (args.eval_batch_size / 2 - 1)] * (dataset[0]["parameters"].size()[1] - 1) + [0])
                         for i in range(args.eval_batch_size / 2):
                             encoder_hidden_states.append(
-                                [i / (args.eval_batch_size / 2 - 1)] * dataset[0]["parameters"].size()[1] + [1])
+                                [i / (args.eval_batch_size / 2 - 1)] * (dataset[0]["parameters"].size()[1] - 1) + [1])
                     images = pipeline(
                         batch_size=len(encoder_hidden_states),
                         generator=generator,
