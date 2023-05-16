@@ -465,7 +465,7 @@ def main(args):
                                        data_size=args.data_size, transform=np.log, accelerator=accelerator)
                 if len(args.dataset_name) == 2:
                     Y_class = np.ones((Y.shape[0], 1, 1)) * i
-                    Y = np.concatenate((Y, Y_class), axis=2)
+                    Y = np.concatenate((Y, Y_class), axis=2).astype(np.float32)
                 data.append([X, Y])
 
             X = np.concatenate([d[0] for d in data], axis=0)
@@ -515,8 +515,15 @@ def main(args):
         dataset.set_transform(transform_images)
 
     d = dataset[0]
+
+    print(d["parameters"].size())
+
     data_in_channels = d["input"].size()[0]
     data_out_channels = d["input"].size()[0]
+    if args.conditional:
+        encoder_hid_dim = d["parameters"].size()[1]
+    else:
+        encoder_hid_dim = None
 
     if "conditional_input" in d:
         conditional_channels = d["conditional_input"].size()[0]
@@ -617,7 +624,7 @@ def main(args):
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
-                encoder_hid_dim=dataset[0]["parameters"].size()[1],
+                encoder_hid_dim=encoder_hid_dim,
                 block_out_channels=(args.base_channels, 2 * args.base_channels, 4 * args.base_channels,
                                     4 * args.base_channels),
                 cross_attention_dim=cross_attention_dim,
