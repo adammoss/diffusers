@@ -1,4 +1,5 @@
-# Calculate 1D power spectrum. From https://github.com/nmudur/diffusion-models-astrophysical-fields-mlps
+# Calculate 1D power spectrum and Minkowski functionals.
+# From https://github.com/nmudur/diffusion-models-astrophysical-fields-mlps
 
 import numpy as np
 from quantimpy import minkowski as mk

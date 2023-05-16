@@ -1,6 +1,4 @@
 {
-  "_class_name": "UNet2DConditionModel",
-  "_diffusers_version": "0.16.0",
   "act_fn": "silu",
   "addition_embed_type": null,
   "addition_embed_type_num_heads": 64,

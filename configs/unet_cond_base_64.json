@@ -1,22 +1,20 @@
 {
-  "_class_name": "UNet2DConditionModel",
-  "_diffusers_version": "0.16.0",
   "act_fn": "silu",
   "addition_embed_type": null,
   "addition_embed_type_num_heads": 64,
   "attention_head_dim": 8,
   "block_out_channels": [
+    64,
     128,
     256,
-    512,
-    512
+    256
   ],
   "center_input_sample": false,
   "class_embed_type": null,
   "class_embeddings_concat": false,
   "conv_in_kernel": 3,
   "conv_out_kernel": 3,
-  "cross_attention_dim": 512,
+  "cross_attention_dim": 256,
   "cross_attention_norm": null,
   "down_block_types": [
     "CrossAttnDownBlock2D",

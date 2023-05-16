@@ -1,6 +1,4 @@
 {
-  "_class_name": "UNet2DModel",
-  "_diffusers_version": "0.16.0",
   "act_fn": "silu",
   "add_attention": true,
   "attention_head_dim": 8,
