@@ -516,8 +516,6 @@ def main(args):
 
     d = dataset[0]
 
-    print(d["parameters"].size())
-
     data_in_channels = d["input"].size()[0]
     data_out_channels = d["input"].size()[0]
     if args.conditional:
