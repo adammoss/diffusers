@@ -613,31 +613,88 @@ def main(args):
     # Initialize the model
     if args.model_config_name_or_path is None:
         if args.conditional:
-            # Base model from SD but with variable base channel number
             if args.cross_attention_dim is not None:
                 cross_attention_dim = args.cross_attention_dim
             else:
                 cross_attention_dim = 4 * args.base_channels
-            model = UNetModel(
-                sample_size=sample_size,
-                in_channels=in_channels + conditional_channels,
-                out_channels=out_channels,
-                encoder_hid_dim=encoder_hid_dim,
-                block_out_channels=(args.base_channels, 2 * args.base_channels, 4 * args.base_channels,
-                                    4 * args.base_channels),
-                cross_attention_dim=cross_attention_dim,
-                down_block_types=(
+            if sample_size <= 64:
+                # LDM-8 config from https://arxiv.org/pdf/2112.10752.pdf
+                block_out_channels = (
+                    args.base_channels,
+                    2 * args.base_channels,
+                    4 * args.base_channels,
+                    4 * args.base_channels,
+                )
+                down_block_types = (
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                     "DownBlock2D",
-                ),
-                up_block_types=(
+                )
+                up_block_types = (
                     "UpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                 )
+            elif sample_size == 128:
+                # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf (NB we have CA at 64 res)
+                block_out_channels = (
+                    args.base_channels,
+                    2 * args.base_channels,
+                    2 * args.base_channels,
+                    4 * args.base_channels,
+                    4 * args.base_channels,
+                )
+                down_block_types = (
+                    "DownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                )
+                up_block_types = (
+                    "UpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                )
+            else:
+                # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
+                block_out_channels = (
+                    args.base_channels,
+                    args.base_channels,
+                    2 * args.base_channels,
+                    2 * args.base_channels,
+                    4 * args.base_channels,
+                    4 * args.base_channels,
+                )
+                down_block_types = (
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                )
+                up_block_types = (
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                )
+            model = UNetModel(
+                sample_size=sample_size,
+                in_channels=in_channels + conditional_channels,
+                out_channels=out_channels,
+                encoder_hid_dim=encoder_hid_dim,
+                block_out_channels=block_out_channels,
+                cross_attention_dim=cross_attention_dim,
+                down_block_types=down_block_types,
+                up_block_types=up_block_types,
             )
         else:
             # Base model from https://github.com/huggingface/diffusers/blob/main/examples/unconditional_image_generation/train_unconditional.py
