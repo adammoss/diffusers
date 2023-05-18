@@ -695,6 +695,7 @@ def main(args):
                 cross_attention_dim=cross_attention_dim,
                 down_block_types=down_block_types,
                 up_block_types=up_block_types,
+                attention_head_dim=1,
             )
         else:
             # Base model from https://github.com/huggingface/diffusers/blob/main/examples/unconditional_image_generation/train_unconditional.py
