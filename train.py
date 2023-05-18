@@ -644,21 +644,21 @@ def main(args):
                     2 * args.base_channels,
                     2 * args.base_channels,
                     4 * args.base_channels,
-                    4 * args.base_channels,
+                    #4 * args.base_channels,
                 )
                 down_block_types = (
                     "DownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
+                    #"CrossAttnDownBlock2D",
                 )
                 up_block_types = (
                     "UpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
+                    #"CrossAttnUpBlock2D",
                 )
             else:
                 # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
