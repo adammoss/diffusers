@@ -617,7 +617,7 @@ def main(args):
                 cross_attention_dim = args.cross_attention_dim
             else:
                 cross_attention_dim = 4 * args.base_channels
-            if sample_size <= 64:
+            if sample_size <= 128:
                 # LDM-8 config from https://arxiv.org/pdf/2112.10752.pdf
                 block_out_channels = (
                     args.base_channels,
@@ -644,15 +644,18 @@ def main(args):
                     2 * args.base_channels,
                     2 * args.base_channels,
                     4 * args.base_channels,
+                    4 * args.base_channels,
                 )
                 down_block_types = (
                     "DownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
                 )
                 up_block_types = (
                     "UpBlock2D",
+                    "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
