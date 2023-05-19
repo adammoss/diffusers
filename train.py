@@ -460,18 +460,24 @@ def main(args):
                 raise ValueError("Num datasets > 1 not compatible with conditional data")
 
             data = []
+            data_conditional = []
             for i, dataset_name in enumerate(args.dataset_name):
                 X, Y = get_cmd_dataset(dataset_name, cache_dir=args.cache_dir, resolution=args.resolution,
                                        data_size=args.data_size, transform=np.log, accelerator=accelerator)
                 if len(args.dataset_name) == 2:
                     Y_class = np.ones((Y.shape[0], 1, 1)) * i
                     Y = np.concatenate((Y, Y_class), axis=2).astype(np.float32)
+                if args.super_resolution is not None:
+                    data_conditional.append(get_low_resolution(X, args.super_resolution))
                 data.append([X, Y])
 
             X = np.concatenate([d[0] for d in data], axis=0)
             Y = np.concatenate([d[1] for d in data], axis=0)
 
-            dataset = CustomDataset(X, Y, augment=True)
+            if len(data_conditional) > 0:
+                dataset = CustomDataset(X, Y, augment=True, data_conditional=np.concatenate(data_conditional, axis=0))
+            else:
+                dataset = CustomDataset(X, Y, augment=True)
 
     elif args.dataset_name == 'dsprites':
 
@@ -850,17 +856,28 @@ def main(args):
 
             average_out_channels = False
             if vae is not None:
-                inputs = batch["input"]
+                clean_images = batch["input"]
                 if vae.config.in_channels > 1 and data_in_channels == 1:
-                    inputs = torch.cat([inputs] * vae.config.in_channels, dim=1)
+                    clean_images = torch.cat([clean_images] * vae.config.in_channels, dim=1)
                     average_out_channels = True
                 if vae.__class__ == VQModel:
-                    clean_images = vae.encode(inputs.to(weight_dtype)).latents
+                    clean_images = vae.encode(clean_images.to(weight_dtype)).latents
                 else:
-                    clean_images = vae.encode(inputs.to(weight_dtype)).latent_dist.sample()
+                    clean_images = vae.encode(clean_images.to(weight_dtype)).latent_dist.sample()
                 clean_images = clean_images * vae.config.scaling_factor
+                if "conditional_input" in batch:
+                    conditional_images = batch["conditional_input"]
+                    if vae.config.in_channels > 1 and data_in_channels == 1:
+                        conditional_images = torch.cat([conditional_images] * vae.config.in_channels, dim=1)
+                    if vae.__class__ == VQModel:
+                        conditional_images = vae.encode(conditional_images.to(weight_dtype)).latents
+                    else:
+                        conditional_images = vae.encode(conditional_images.to(weight_dtype)).latent_dist.sample()
+                    conditional_images = conditional_images * vae.config.scaling_factor
             else:
                 clean_images = batch["input"]
+                if "conditional_input" in batch:
+                    conditional_images = batch["conditional_input"]
 
             # Sample noise that we'll add to the images
             noise = torch.randn(clean_images.shape).to(clean_images.device)
@@ -875,7 +892,7 @@ def main(args):
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
 
             if "conditional_input" in batch:
-                noisy_images = torch.cat((noisy_images, batch["conditional_input"]), dim=1)
+                noisy_images = torch.cat((noisy_images, conditional_images), dim=1)
 
             with accelerator.accumulate(model):
                 # Predict the noise residual

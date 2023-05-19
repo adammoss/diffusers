@@ -5,6 +5,7 @@ import numpy as np
 
 from diffusers.utils import randn_tensor
 from diffusers.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
+from diffusers import AutoencoderKL, VQModel
 
 
 class DDPMConditionPipeline(DiffusionPipeline):
@@ -183,6 +184,11 @@ class LatentDDPMConditionPipeline(DiffusionPipeline):
             elif len(conditional_image.size()) == 4:
                 batch_size = conditional_image.size()[0]
             conditional_image = conditional_image.to(self.device)
+            if self.vae.__class__ == VQModel:
+                conditional_image = self.vae.encode(conditional_image).latents
+            else:
+                conditional_image = self.vae.encode(conditional_image).latent_dist.sample()
+            conditional_image = self.vae.config.scaling_factor * conditional_image
             conditional_channels = conditional_image.size()[1]
         else:
             conditional_channels = 0
