@@ -1049,7 +1049,7 @@ def main(args):
                     )
                     if images.shape[-1] == 1:
                         # 1 channel, channel dim now last
-                        kvals = np.arange(0, images.shape[-1] / 2)
+                        kvals = np.arange(0, images.shape[1] / 2)
                         ps = []
                         for image in images:
                             ps.append(list(calc_1dps_img2d(image, smoothed=0.25)[1] * kvals**2))
