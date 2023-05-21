@@ -33,6 +33,7 @@ from diffusers.utils.import_utils import is_xformers_available
 
 from pipelines import DDPMConditionPipeline, LatentDDPMConditionPipeline
 from data import CustomDataset, get_cmd_dataset, get_dsprites_dataset, get_low_resolution
+from plotting import calc_1dps_img2d
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.15.0.dev0")
@@ -1041,10 +1042,23 @@ def main(args):
                     tracker.add_images("test_samples", images_processed.transpose(0, 3, 1, 2), epoch)
                 elif args.logger == "wandb":
                     # Upcoming `log_images` helper coming in https://github.com/huggingface/accelerate/pull/962/files
-                    accelerator.get_tracker("wandb").log(
+                    tracker = accelerator.get_tracker("wandb")
+                    tracker.log(
                         {"test_samples": [wandb.Image(img) for img in images_processed], "epoch": epoch},
                         step=global_step,
                     )
+                    if images.shape[1] == 1:
+                        # 1 channel, channel dim now first
+                        Nx = images.shape[-1]
+                        kvals = np.arange(0, Nx / 2)
+                        ps = []
+                        for image in images:
+                            ps.append(list(calc_1dps_img2d(image, smoothed=0.25)[1] * kvals**2))
+                        tracker.log({"power_spectrum": wandb.plot.line_series(
+                            xs=list(kvals),
+                            ys=ps,
+                            title="Power spectrum",
+                            xname="k")})
 
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
