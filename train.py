@@ -1053,13 +1053,11 @@ def main(args):
                         ps = []
                         for image in images:
                             ps.append(list(calc_1dps_img2d(image, smoothed=0.25)[1] * kvals**2))
-                        print(kvals)
-                        print(ps[0])
                         tracker.log({"power_spectrum": wandb.plot.line_series(
                             xs=list(kvals),
                             ys=ps,
                             title="Power spectrum",
-                            xname="k")})
+                            xname="k"), "epoch": epoch}, step=global_step)
 
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
