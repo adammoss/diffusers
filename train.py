@@ -1047,9 +1047,8 @@ def main(args):
                         {"test_samples": [wandb.Image(img) for img in images_processed], "epoch": epoch},
                         step=global_step,
                     )
-                    print(images.shape)
-                    if images.shape[1] == 1:
-                        # 1 channel, channel dim now first
+                    if images.shape[-1] == 1:
+                        # 1 channel, channel dim now last
                         kvals = np.arange(0, images.shape[-1] / 2)
                         ps = []
                         for image in images:
