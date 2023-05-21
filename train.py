@@ -1047,10 +1047,10 @@ def main(args):
                         {"test_samples": [wandb.Image(img) for img in images_processed], "epoch": epoch},
                         step=global_step,
                     )
+                    print(images.shape)
                     if images.shape[1] == 1:
                         # 1 channel, channel dim now first
-                        Nx = images.shape[-1]
-                        kvals = np.arange(0, Nx / 2)
+                        kvals = np.arange(0, images.shape[-1] / 2)
                         ps = []
                         for image in images:
                             ps.append(list(calc_1dps_img2d(image, smoothed=0.25)[1] * kvals**2))
