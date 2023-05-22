@@ -1057,7 +1057,7 @@ def main(args):
                             xs=list(kvals),
                             ys=ps,
                             title="Power spectrum",
-                            xname="k"), "epoch": epoch}, step=global_step)
+                            xname="k")}, step=global_step)
 
             if epoch % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 # save the model
