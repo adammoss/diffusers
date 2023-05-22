@@ -1,4 +1,8 @@
+import os
+import argparse
+
 import torch
+import numpy as np
 
 from diffusers import DiffusionPipeline, RePaintPipeline
 
@@ -66,3 +70,43 @@ def img2img(model, images, device=None, num_inference_steps=None, batch_size=1, 
         generator=generator,
     ).images
     return images
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--action",
+        type=str,
+        default="samples",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="results",
+    )
+    parser.add_argument(
+        "--num_samples",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+    )
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+    if args.action == "samples":
+        images = generate_samples("adammoss/%s" % args.model, batch_size=args.num_samples, device=args.device)
+        np.save(os.path.join(args.output_dir, args.model + "_samples.npy"), images)
