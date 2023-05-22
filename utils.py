@@ -197,3 +197,94 @@ if __name__ == "__main__":
                                   device=args.device, encoder_hidden_states=encoder_hidden_states,
                                   generator=generator, average_out_channels=True)
         np.save(os.path.join(args.output_dir, args.model + "-fix-generator.npy"), images)
+    elif args.action == "class_conditional_samples":
+        for class_label in [0, 1]:
+            encoder_hidden_states = []
+            for i in range(args.num_samples):
+                encoder_hidden_states.append([
+                    0.1 * np.random.rand(),
+                    0.1 * np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    class_label
+                ])
+            images = generate_samples("adammoss/%s" % args.model,
+                                      batch_size=len(encoder_hidden_states),
+                                      device=args.device,
+                                      encoder_hidden_states=encoder_hidden_states,
+                                      num_inference_steps=args.num_inference_steps)
+            np.save(os.path.join(args.output_dir, args.model + "-class%s-slice1.npy" % class_label), images)
+            encoder_hidden_states = []
+            for i in range(args.num_samples):
+                encoder_hidden_states.append([
+                    0.9 + 0.1 * np.random.rand(),
+                    0.1 * np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    class_label
+                ])
+            images = generate_samples("adammoss/%s" % args.model,
+                                      batch_size=len(encoder_hidden_states),
+                                      device=args.device,
+                                      encoder_hidden_states=encoder_hidden_states,
+                                      num_inference_steps=args.num_inference_steps)
+            np.save(os.path.join(args.output_dir, args.model + "-class%s-slice2.npy" % class_label), images)
+            encoder_hidden_states = []
+            for i in range(args.num_samples):
+                encoder_hidden_states.append([
+                    0.1 * np.random.rand(),
+                    0.9 + 0.1 * np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    class_label
+                ])
+            images = generate_samples("adammoss/%s" % args.model,
+                                      batch_size=len(encoder_hidden_states),
+                                      device=args.device,
+                                      encoder_hidden_states=encoder_hidden_states,
+                                      num_inference_steps=args.num_inference_steps)
+            np.save(os.path.join(args.output_dir, args.model + "-class%s-slice3.npy" % class_label), images)
+            encoder_hidden_states = []
+            for i in range(args.num_samples):
+                encoder_hidden_states.append([
+                    0.9 + 0.1 * np.random.rand(),
+                    0.9 + 0.1 * np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    class_label
+                ])
+            images = generate_samples("adammoss/%s" % args.model,
+                                      batch_size=len(encoder_hidden_states),
+                                      device=args.device,
+                                      encoder_hidden_states=encoder_hidden_states,
+                                      num_inference_steps=args.num_inference_steps)
+            np.save(os.path.join(args.output_dir, args.model + "-class%s-slice4.npy" % class_label), images)
+        generator = []
+        encoder_hidden_states = []
+        for i in range(args.num_samples):
+            generator += [
+                torch.Generator(device='cuda').manual_seed(i),
+                torch.Generator(device='cuda').manual_seed(i),
+                torch.Generator(device='cuda').manual_seed(i),
+                torch.Generator(device='cuda').manual_seed(i),
+            ]
+            encoder_hidden_states += [
+                [0, 0, 0, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1, 1],
+            ]
+        images = generate_samples("adammoss/%s" % args.model,
+                                  batch_size=len(encoder_hidden_states),
+                                  device=args.device, encoder_hidden_states=encoder_hidden_states,
+                                  generator=generator, average_out_channels=True)
+        np.save(os.path.join(args.output_dir, args.model + "-fix-generator.npy"), images)
+
