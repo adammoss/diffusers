@@ -292,7 +292,7 @@ def parse_args():
     )
     parser.add_argument("--ddpm_num_steps", type=int, default=1000)
     parser.add_argument("--ddpm_num_inference_steps", type=int, default=1000)
-    parser.add_argument("--ddpm_beta_schedule", type=str, default="linear")
+    parser.add_argument("--ddpm_beta_schedule", type=str, default="squaredcos_cap_v2")
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
