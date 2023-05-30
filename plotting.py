@@ -5,12 +5,19 @@ import numpy as np
 from quantimpy import minkowski as mk
 
 
-def calc_1dps_img2d(img, smoothed=0.5):
-    img = np.squeeze(img)
-    Nx = img.shape[0]
+def calc_1dps_img2d(img1, img2=None, smoothed=0.5):
+    img1 = np.squeeze(img1)
+    Nx = img1.shape[0]
     kvals = np.arange(0, Nx / 2)
-    fft_zerocenter = np.fft.fftshift(np.fft.fft2(img) / Nx ** 2)
-    impf = abs(fft_zerocenter) ** 2.0
+    if img2 is None:
+        fft_zerocenter = np.fft.fftshift(np.fft.fft2(img1) / Nx ** 2)
+        impf = np.real(fft_zerocenter) ** 2 + np.imag(fft_zerocenter) ** 2
+    else:
+        assert img1.shape == img2.shape
+        fft_zerocenter1 = np.fft.fftshift(np.fft.fft2(img1) / Nx ** 2)
+        fft_zerocenter2 = np.fft.fftshift(np.fft.fft2(img2) / Nx ** 2)
+        impf = np.real(fft_zerocenter1) * np.real(fft_zerocenter2) + \
+               np.imag(fft_zerocenter1) * np.imag(fft_zerocenter2)
     x, y = np.meshgrid(np.arange(Nx), np.arange(Nx))
     R = np.sqrt((x - (Nx / 2)) ** 2 + (y - (Nx / 2)) ** 2)
     filt = lambda r: impf[(R >= r - smoothed) & (R < r + smoothed)].mean()
