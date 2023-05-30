@@ -13,6 +13,7 @@ def calc_1dps_img2d(img1, img2=None, smoothed=0.5):
         fft_zerocenter = np.fft.fftshift(np.fft.fft2(img1) / Nx ** 2)
         impf = np.real(fft_zerocenter) ** 2 + np.imag(fft_zerocenter) ** 2
     else:
+        img2 = np.squeeze(img2)
         assert img1.shape == img2.shape
         fft_zerocenter1 = np.fft.fftshift(np.fft.fft2(img1) / Nx ** 2)
         fft_zerocenter2 = np.fft.fftshift(np.fft.fft2(img2) / Nx ** 2)
