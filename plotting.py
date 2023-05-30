@@ -26,9 +26,10 @@ def calc_1dps_img2d(img1, img2=None, smoothed=0.5):
     return kvals, mean
 
 
-def get_minkowski(img, min=-1, max=1):
+def get_minkowski(img, gs_vals=None, min=-1, max=1):
     img = np.squeeze(img)
-    gs_vals = np.linspace(min, max, 50)
+    if gs_vals is None:
+        gs_vals = np.linspace(min, max, 50)
     gs_masks = [img >= gs_vals[ig] for ig in range(len(gs_vals))]
     minkowski = []
     for i in range(len(gs_masks)):
