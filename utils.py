@@ -154,6 +154,8 @@ if __name__ == "__main__":
                                   num_inference_steps=args.num_inference_steps,
                                   generator=generator)
         np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+        np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
+                np.array(encoder_hidden_states))
     elif args.action == "class_conditional_samples":
         encoder_hidden_states = []
         for i in range(args.num_samples):
@@ -173,3 +175,7 @@ if __name__ == "__main__":
                                   num_inference_steps=args.num_inference_steps,
                                   generator=generator)
         np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+        np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
+                np.array(encoder_hidden_states))
+
+
