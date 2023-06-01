@@ -668,6 +668,8 @@ def main(args):
                 )
             elif sample_size == 128:
                 if args.super_resolution is not None:
+                    # Imagen like config from https://arxiv.org/pdf/2205.11487.pdf
+                    # Imagen has CA at 32 and (1,2,4,8) channel multiplier
                     block_out_channels = (
                         args.base_channels,
                         2 * args.base_channels,
@@ -677,12 +679,12 @@ def main(args):
                     down_block_types = (
                         "DownBlock2D",
                         "DownBlock2D",
-                        "DownBlock2D",
                         "CrossAttnDownBlock2D",
+                        "DownBlock2D",
                     )
                     up_block_types = (
-                        "CrossAttnUpBlock2D",
                         "UpBlock2D",
+                        "CrossAttnUpBlock2D",
                         "UpBlock2D",
                         "UpBlock2D",
                     )
@@ -712,6 +714,8 @@ def main(args):
                     )
             else:
                 if args.super_resolution is not None:
+                    # Imagen like config from https://arxiv.org/pdf/2205.11487.pdf
+                    # Imagen has CA at 32 and (1,2,4,8) channel multiplier
                     block_out_channels = (
                         args.base_channels,
                         2 * args.base_channels,
