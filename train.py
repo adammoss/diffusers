@@ -626,7 +626,7 @@ def main(args):
             else:
                 cross_attention_dim = 4 * args.base_channels
             if sample_size <= 64:
-                # LDM-8 config from https://arxiv.org/pdf/2112.10752.pdf
+                # LDM-8 like config from https://arxiv.org/pdf/2112.10752.pdf
                 block_out_channels = (
                     args.base_channels,
                     2 * args.base_channels,
@@ -656,17 +656,17 @@ def main(args):
                     down_block_types = (
                         "DownBlock2D",
                         "DownBlock2D",
-                        "DownBlock2D",
+                        "CrossAttnDownBlock2D",
                         "CrossAttnDownBlock2D",
                     )
                     up_block_types = (
                         "UpBlock2D",
                         "UpBlock2D",
-                        "UpBlock2D",
+                        "CrossAttnUpBlock2D",
                         "CrossAttnUpBlock2D",
                     )
                 else:
-                    # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf (NB we have CA at 64 res)
+                    # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf
                     block_out_channels = (
                         args.base_channels,
                         2 * args.base_channels,
@@ -675,14 +675,14 @@ def main(args):
                         4 * args.base_channels,
                     )
                     down_block_types = (
-                        "CrossAttnDownBlock2D",
+                        "DownBlock2D",
                         "CrossAttnDownBlock2D",
                         "CrossAttnDownBlock2D",
                         "CrossAttnDownBlock2D",
                         "DownBlock2D",
                     )
                     up_block_types = (
-                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
                         "CrossAttnUpBlock2D",
                         "CrossAttnUpBlock2D",
                         "CrossAttnUpBlock2D",
@@ -704,7 +704,7 @@ def main(args):
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
+                    "DownBlock2D",
                 )
                 up_block_types = (
                     "UpBlock2D",
@@ -712,7 +712,7 @@ def main(args):
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
+                    "UpBlock2D",
                 )
             model = UNetModel(
                 sample_size=sample_size,
@@ -731,8 +731,14 @@ def main(args):
                 in_channels=in_channels + conditional_channels,
                 out_channels=out_channels,
                 layers_per_block=2,
-                block_out_channels=(args.base_channels, args.base_channels, 2 * args.base_channels,
-                                    2 * args.base_channels, 4 * args.base_channels, 4 * args.base_channels),
+                block_out_channels=(
+                    args.base_channels,
+                    args.base_channels,
+                    2 * args.base_channels,
+                    2 * args.base_channels,
+                    4 * args.base_channels,
+                    4 * args.base_channels
+                ),
                 down_block_types=(
                     "DownBlock2D",
                     "DownBlock2D",
