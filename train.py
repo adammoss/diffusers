@@ -625,7 +625,7 @@ def main(args):
                 cross_attention_dim = args.cross_attention_dim
             else:
                 cross_attention_dim = 4 * args.base_channels
-            if sample_size <= 64:
+            if sample_size <= 32:
                 # LDM-8 like config from https://arxiv.org/pdf/2112.10752.pdf
                 block_out_channels = (
                     args.base_channels,
@@ -645,6 +645,26 @@ def main(args):
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
                 )
+            elif sample_size == 64:
+                # LDM-8 like config from https://arxiv.org/pdf/2112.10752.pdf
+                block_out_channels = (
+                    args.base_channels,
+                    2 * args.base_channels,
+                    4 * args.base_channels,
+                    4 * args.base_channels,
+                )
+                down_block_types = (
+                    "DownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                )
+                up_block_types = (
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "UpBlock2D",
+                )
             elif sample_size == 128:
                 if args.super_resolution is not None:
                     block_out_channels = (
@@ -656,14 +676,14 @@ def main(args):
                     down_block_types = (
                         "DownBlock2D",
                         "DownBlock2D",
-                        "CrossAttnDownBlock2D",
+                        "DownBlock2D",
                         "CrossAttnDownBlock2D",
                     )
                     up_block_types = (
+                        "CrossAttnUpBlock2D",
                         "UpBlock2D",
                         "UpBlock2D",
-                        "CrossAttnUpBlock2D",
-                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
                     )
                 else:
                     # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf
