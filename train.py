@@ -457,7 +457,7 @@ def main(args):
 
         else:
 
-            if args.dataset_conditional_name is not None or args.super_resolution is not None:
+            if args.dataset_conditional_name is not None:
                 raise ValueError("Num datasets > 1 not compatible with conditional data")
 
             data = []
@@ -476,7 +476,8 @@ def main(args):
             Y = np.concatenate([d[1] for d in data], axis=0)
 
             if len(data_conditional) > 0:
-                dataset = CustomDataset(X, Y, augment=True, data_conditional=np.concatenate(data_conditional, axis=0))
+                dataset = CustomDataset(X, Y, augment=True,
+                                        data_conditional=np.concatenate(data_conditional, axis=0))
             else:
                 dataset = CustomDataset(X, Y, augment=True)
 
@@ -645,28 +646,48 @@ def main(args):
                     "CrossAttnUpBlock2D",
                 )
             elif sample_size == 128:
-                # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf (NB we have CA at 64 res)
-                block_out_channels = (
-                    args.base_channels,
-                    2 * args.base_channels,
-                    2 * args.base_channels,
-                    4 * args.base_channels,
-                    4 * args.base_channels,
-                )
-                down_block_types = (
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "DownBlock2D",
-                )
-                up_block_types = (
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "UpBlock2D",
-                )
+                if args.super_resolution is not None:
+                    block_out_channels = (
+                        args.base_channels,
+                        2 * args.base_channels,
+                        4 * args.base_channels,
+                        4 * args.base_channels,
+                    )
+                    down_block_types = (
+                        "DownBlock2D",
+                        "DownBlock2D"
+                        "DownBlock2D"
+                        "CrossAttnDownBlock2D",
+                    )
+                    up_block_types = (
+                        "UpBlock2D",
+                        "UpBlock2D",
+                        "UpBlock2D",
+                        "CrossAttnUpBlock2D",
+                    )
+                else:
+                    # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf (NB we have CA at 64 res)
+                    block_out_channels = (
+                        args.base_channels,
+                        2 * args.base_channels,
+                        2 * args.base_channels,
+                        4 * args.base_channels,
+                        4 * args.base_channels,
+                    )
+                    down_block_types = (
+                        "CrossAttnDownBlock2D",
+                        "CrossAttnDownBlock2D",
+                        "CrossAttnDownBlock2D",
+                        "CrossAttnDownBlock2D",
+                        "DownBlock2D",
+                    )
+                    up_block_types = (
+                        "CrossAttnUpBlock2D",
+                        "CrossAttnUpBlock2D",
+                        "CrossAttnUpBlock2D",
+                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
+                    )
             else:
                 # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
                 block_out_channels = (
@@ -998,14 +1019,25 @@ def main(args):
                             encoder_hidden_states.append(
                                 [i / (args.eval_batch_size / 2 - 1)] * (dataset[0]["parameters"].size()[1] - 1) + [1])
                             generator.append(torch.Generator(device=pipeline.device).manual_seed(i))
-                    images = pipeline(
-                        batch_size=len(encoder_hidden_states),
-                        generator=generator,
-                        num_inference_steps=args.ddpm_num_inference_steps,
-                        output_type="numpy",
-                        encoder_hidden_states=encoder_hidden_states,
-                        average_out_channels=average_out_channels,
-                    ).images
+                    if "conditional_input" in batch:
+                        images = pipeline(
+                            batch_size=len(encoder_hidden_states),
+                            generator=generator,
+                            num_inference_steps=args.ddpm_num_inference_steps,
+                            output_type="numpy",
+                            conditional_image=conditional_test,
+                            encoder_hidden_states=encoder_hidden_states,
+                            average_out_channels=average_out_channels,
+                        ).images
+                    else:
+                        images = pipeline(
+                            batch_size=len(encoder_hidden_states),
+                            generator=generator,
+                            num_inference_steps=args.ddpm_num_inference_steps,
+                            output_type="numpy",
+                            encoder_hidden_states=encoder_hidden_states,
+                            average_out_channels=average_out_channels,
+                        ).images
                 else:
                     generator = torch.Generator(device=pipeline.device).manual_seed(0)
                     if "conditional_input" in batch:
