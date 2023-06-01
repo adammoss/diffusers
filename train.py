@@ -626,7 +626,7 @@ def main(args):
             else:
                 cross_attention_dim = 4 * args.base_channels
             if sample_size <= 32:
-                # LDM-8 like config from https://arxiv.org/pdf/2112.10752.pdf
+                # Stable diffusion like config with CA at (32,16,8) and (1,2,4,4) channel multiplier
                 block_out_channels = (
                     args.base_channels,
                     2 * args.base_channels,
@@ -646,11 +646,12 @@ def main(args):
                     "CrossAttnUpBlock2D",
                 )
             elif sample_size == 64:
-                # LDM-8 like config from https://arxiv.org/pdf/2112.10752.pdf
+                # LDM-4 like config from https://arxiv.org/pdf/2112.10752.pdf
+                # LDM-4 has CA at (32,16,8) and (1,2,3,4) channel multiplier
                 block_out_channels = (
                     args.base_channels,
                     2 * args.base_channels,
-                    4 * args.base_channels,
+                    3 * args.base_channels,
                     4 * args.base_channels,
                 )
                 down_block_types = (
@@ -670,7 +671,7 @@ def main(args):
                     block_out_channels = (
                         args.base_channels,
                         2 * args.base_channels,
-                        4 * args.base_channels,
+                        3 * args.base_channels,
                         4 * args.base_channels,
                     )
                     down_block_types = (
@@ -687,6 +688,7 @@ def main(args):
                     )
                 else:
                     # LDM-2 like config from https://arxiv.org/pdf/2112.10752.pdf
+                    # LDM-2 has CA at (32,16,8) and (1,2,2,4,4) channel multiplier
                     block_out_channels = (
                         args.base_channels,
                         2 * args.base_channels,
@@ -696,7 +698,7 @@ def main(args):
                     )
                     down_block_types = (
                         "DownBlock2D",
-                        "CrossAttnDownBlock2D",
+                        "DownBlock2D",
                         "CrossAttnDownBlock2D",
                         "CrossAttnDownBlock2D",
                         "DownBlock2D",
@@ -705,11 +707,12 @@ def main(args):
                         "UpBlock2D",
                         "CrossAttnUpBlock2D",
                         "CrossAttnUpBlock2D",
-                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
                         "UpBlock2D",
                     )
             else:
                 # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
+                # LDM-1 has CA at (32,16,8) and (1,1,2,2,4,4) channel multiplier
                 block_out_channels = (
                     args.base_channels,
                     args.base_channels,
@@ -721,17 +724,17 @@ def main(args):
                 down_block_types = (
                     "DownBlock2D",
                     "DownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
                     "DownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2D",
+                    "CrossAttnDownBlock2",
                 )
                 up_block_types = (
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
+                    "CrossAttnUpBlock2D",
                     "UpBlock2D",
                     "UpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
                     "UpBlock2D",
                 )
             model = UNetModel(
