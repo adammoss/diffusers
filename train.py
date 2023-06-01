@@ -727,7 +727,7 @@ def main(args):
                     "DownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2",
+                    "CrossAttnDownBlock2D",
                 )
                 up_block_types = (
                     "CrossAttnUpBlock2D",
