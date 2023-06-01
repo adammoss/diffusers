@@ -711,32 +711,52 @@ def main(args):
                         "UpBlock2D",
                     )
             else:
-                # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
-                # LDM-1 has CA at (32,16,8) and (1,1,2,2,4,4) channel multiplier
-                block_out_channels = (
-                    args.base_channels,
-                    args.base_channels,
-                    2 * args.base_channels,
-                    2 * args.base_channels,
-                    4 * args.base_channels,
-                    4 * args.base_channels,
-                )
-                down_block_types = (
-                    "DownBlock2D",
-                    "DownBlock2D",
-                    "DownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                    "CrossAttnDownBlock2D",
-                )
-                up_block_types = (
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
-                    "UpBlock2D",
-                    "UpBlock2D",
-                    "UpBlock2D",
-                )
+                if args.super_resolution is not None:
+                    block_out_channels = (
+                        args.base_channels,
+                        2 * args.base_channels,
+                        3 * args.base_channels,
+                        4 * args.base_channels,
+                    )
+                    down_block_types = (
+                        "DownBlock2D",
+                        "DownBlock2D",
+                        "DownBlock2D",
+                        "CrossAttnDownBlock2D",
+                    )
+                    up_block_types = (
+                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
+                        "UpBlock2D",
+                        "UpBlock2D",
+                    )
+                else:
+                    # LDM-1 like config from https://arxiv.org/pdf/2112.10752.pdf
+                    # LDM-1 has CA at (32,16,8) and (1,1,2,2,4,4) channel multiplier
+                    block_out_channels = (
+                        args.base_channels,
+                        args.base_channels,
+                        2 * args.base_channels,
+                        2 * args.base_channels,
+                        4 * args.base_channels,
+                        4 * args.base_channels,
+                    )
+                    down_block_types = (
+                        "DownBlock2D",
+                        "DownBlock2D",
+                        "DownBlock2D",
+                        "CrossAttnDownBlock2D",
+                        "CrossAttnDownBlock2D",
+                        "CrossAttnDownBlock2D",
+                    )
+                    up_block_types = (
+                        "CrossAttnUpBlock2D",
+                        "CrossAttnUpBlock2D",
+                        "CrossAttnUpBlock2D",
+                        "UpBlock2D",
+                        "UpBlock2D",
+                        "UpBlock2D",
+                    )
             model = UNetModel(
                 sample_size=sample_size,
                 in_channels=in_channels + conditional_channels,
