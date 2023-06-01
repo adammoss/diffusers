@@ -655,8 +655,8 @@ def main(args):
                     )
                     down_block_types = (
                         "DownBlock2D",
-                        "DownBlock2D"
-                        "DownBlock2D"
+                        "DownBlock2D",
+                        "DownBlock2D",
                         "CrossAttnDownBlock2D",
                     )
                     up_block_types = (
