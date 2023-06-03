@@ -656,14 +656,14 @@ def main(args):
                 )
                 down_block_types = (
                     "DownBlock2D",
-                    "CrossAttnDownBlock2D",
+                    "DownBlock2D",
                     "CrossAttnDownBlock2D",
                     "CrossAttnDownBlock2D",
                 )
                 up_block_types = (
                     "CrossAttnUpBlock2D",
                     "CrossAttnUpBlock2D",
-                    "CrossAttnUpBlock2D",
+                    "UpBlock2D",
                     "UpBlock2D",
                 )
             elif sample_size == 128:
