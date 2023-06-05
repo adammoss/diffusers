@@ -35,7 +35,8 @@ def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
 
 
 def progressive_generate_samples(models, batch_size=1, device=None, num_inference_steps=None,
-                                 encoder_hidden_states=None, average_out_channels=False, generator=None):
+                                 encoder_hidden_states=None, average_out_channels=False, generator=None,
+                                 return_all=False):
     progressive_images = []
     for i, model in enumerate(models):
         config = DiffusionPipeline.load_config(model)
@@ -73,7 +74,10 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 postprocess=i == len(models) - 1,
             ).images
             progressive_images.append(images)
-    return progessive_images
+    if return_all:
+        return progressive_images
+    else:
+        return progressive_images[-1]
 
 
 def inpaint(model, images, mask, device=None, num_inference_steps=None, generator=None):
