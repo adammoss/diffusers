@@ -124,7 +124,7 @@ class DDPMConditionPipeline(DiffusionPipeline):
             if output_type == "pil":
                 image = self.numpy_to_pil(image)
         else:
-            image = image.cpu().numpy()
+            image = image.clamp(-1, 1).cpu().numpy()
 
         if not return_dict:
             return (image,)

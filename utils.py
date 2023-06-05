@@ -36,6 +36,7 @@ def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
 
 def progressive_generate_samples(models, batch_size=1, device=None, num_inference_steps=None,
                                  encoder_hidden_states=None, average_out_channels=False, generator=None):
+    progressive_images = []
     for i, model in enumerate(models):
         config = DiffusionPipeline.load_config(model)
         if ('vae' in config) or ('vqvae' in config):
@@ -57,11 +58,11 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 generator=generator,
                 postprocess=False,
             ).images
+            progressive_images.append(np.tranpose(images/2 + 0.5, (0, 2, 3, 1)))
         else:
             images = np.array([resize_local_mean(image, channel_axis=0,
                                                  output_shape=(pipeline.unet.sample_size,
                                                                pipeline.unet.sample_size)) for image in images])
-            print(images.shape)
             images = pipeline(
                 num_inference_steps=num_inference_steps,
                 output_type="numpy",
@@ -71,7 +72,8 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 generator=generator,
                 postprocess=i == len(models) - 1,
             ).images
-    return images
+            progressive_images.append(images)
+    return progessive_images
 
 
 def inpaint(model, images, mask, device=None, num_inference_steps=None, generator=None):
