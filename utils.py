@@ -55,6 +55,7 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 encoder_hidden_states=encoder_hidden_states,
                 average_out_channels=average_out_channels,
                 generator=generator,
+                postprocess=False,
             ).images
         else:
             images = np.array([resize_local_mean(image, channel_axis=0,
@@ -68,6 +69,7 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 conditional_image=torch.from_numpy(images),
                 average_out_channels=average_out_channels,
                 generator=generator,
+                postprocess=i == len(models) - 1,
             ).images
     return images
 
