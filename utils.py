@@ -61,10 +61,10 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                                         output_shape=(pipeline.unet.sample_size,
                                                       pipeline.unet.sample_size)) for image in images]
             images = pipeline(
-                conditional_image=np.array(images),
                 num_inference_steps=num_inference_steps,
                 output_type="numpy",
                 encoder_hidden_states=encoder_hidden_states,
+                conditional_image=np.array(images),
                 average_out_channels=average_out_channels,
                 generator=generator,
             ).images
