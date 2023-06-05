@@ -58,8 +58,8 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
             ).images
         else:
             images = [resize_local_mean(image, channel_axis=0,
-                                        output_shape=(config.unet.config.sample_size,
-                                                      config.unet.config.sample_size)) for image in images]
+                                        output_shape=(pipeline.unet.sample_size,
+                                                      pipeline.unet.sample_size)) for image in images]
             images = pipeline(
                 conditional_image=np.array(images),
                 num_inference_steps=num_inference_steps,
