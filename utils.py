@@ -58,7 +58,7 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
                 generator=generator,
                 postprocess=False,
             ).images
-            progressive_images.append(np.tranpose(images/2 + 0.5, (0, 2, 3, 1)))
+            progressive_images.append(np.transpose(images/2 + 0.5, (0, 2, 3, 1)))
         else:
             images = np.array([resize_local_mean(image, channel_axis=0,
                                                  output_shape=(pipeline.unet.sample_size,
