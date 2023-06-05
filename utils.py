@@ -60,6 +60,7 @@ def progressive_generate_samples(models, batch_size=1, device=None, num_inferenc
             images = np.array([resize_local_mean(image, channel_axis=0,
                                                  output_shape=(pipeline.unet.sample_size,
                                                                pipeline.unet.sample_size)) for image in images])
+            print(images.shape)
             images = pipeline(
                 num_inference_steps=num_inference_steps,
                 output_type="numpy",
