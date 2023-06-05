@@ -3,6 +3,7 @@ import argparse
 
 import torch
 import numpy as np
+from skimage.transform import resize_local_mean
 
 from diffusers import DiffusionPipeline, RePaintPipeline
 
@@ -30,6 +31,43 @@ def generate_samples(model, batch_size=1, device=None, num_inference_steps=None,
         average_out_channels=average_out_channels,
         generator=generator,
     ).images
+    return images
+
+
+def progressive_generate_samples(models, batch_size=1, device=None, num_inference_steps=None,
+                                 encoder_hidden_states=None, average_out_channels=False, generator=None):
+    for i, model in enumerate(models):
+        config = DiffusionPipeline.load_config(model)
+        if ('vae' in config) or ('vqvae' in config):
+            pipeline = LatentDDPMConditionPipeline.from_pretrained(model)
+        else:
+            pipeline = DDPMConditionPipeline.from_pretrained(model)
+        if device is not None:
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            pipeline = pipeline.to(device)
+        if num_inference_steps is None:
+            num_inference_steps = pipeline.scheduler.num_train_timesteps
+        if i == 0:
+            images = pipeline(
+                batch_size=batch_size,
+                num_inference_steps=num_inference_steps,
+                output_type="numpy",
+                encoder_hidden_states=encoder_hidden_states,
+                average_out_channels=average_out_channels,
+                generator=generator,
+            ).images
+        else:
+            images = [resize_local_mean(image, channel_axis=0,
+                                        output_shape=(config.unet.config.sample_size,
+                                                      config.unet.config.sample_size)) for image in images]
+            images = pipeline(
+                conditional_image=np.array(images),
+                num_inference_steps=num_inference_steps,
+                output_type="numpy",
+                encoder_hidden_states=encoder_hidden_states,
+                average_out_channels=average_out_channels,
+                generator=generator,
+            ).images
     return images
 
 
@@ -127,7 +165,8 @@ if __name__ == "__main__":
         np.random.seed(args.seed)
         generator = []
         for i in range(args.num_samples):
-            generator.append(torch.Generator(device=args.device).manual_seed(np.random.randint(low=-2**32, high=2**32)))
+            generator.append(
+                torch.Generator(device=args.device).manual_seed(np.random.randint(low=-2 ** 32, high=2 ** 32)))
         np.random.seed(args.seed)
     if args.action == "samples":
         images = generate_samples("adammoss/%s" % args.model,
@@ -177,5 +216,3 @@ if __name__ == "__main__":
         np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
         np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
                 np.array(encoder_hidden_states))
-
-
