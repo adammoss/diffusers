@@ -157,6 +157,11 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--local_resize",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
         "--conditional",
         default=False,
         action="store_true",
@@ -450,7 +455,7 @@ def main(args):
                                                                resolution=args.resolution, data_size=args.data_size,
                                                                transform=np.log, accelerator=accelerator)
             elif args.super_resolution is not None:
-                X_conditional = get_low_resolution(X, args.super_resolution)
+                X_conditional = get_low_resolution(X, args.super_resolution, use_resize=not args.local_resize)
             else:
                 X_conditional = None
             dataset = CustomDataset(X, Y, augment=True, data_conditional=X_conditional)
@@ -469,7 +474,8 @@ def main(args):
                     Y_class = np.ones((Y.shape[0], 1, 1)) * i
                     Y = np.concatenate((Y, Y_class), axis=2).astype(np.float32)
                 if args.super_resolution is not None:
-                    data_conditional.append(get_low_resolution(X, args.super_resolution))
+                    data_conditional.append(get_low_resolution(X, args.super_resolution,
+                                                               use_resize=not args.local_resize))
                 data.append([X, Y])
 
             X = np.concatenate([d[0] for d in data], axis=0)
@@ -485,7 +491,7 @@ def main(args):
 
         X, Y = get_dsprites_dataset(cache_dir=args.cache_dir, data_size=args.data_size, accelerator=accelerator)
         if args.super_resolution is not None:
-            X_conditional = get_low_resolution(X, args.super_resolution)
+            X_conditional = get_low_resolution(X, args.super_resolution, use_resize=not args.local_resize)
         else:
             X_conditional = None
         dataset = CustomDataset(X, Y, augment=False, data_conditional=X_conditional)
