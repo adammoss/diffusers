@@ -153,9 +153,14 @@ def get_dsprites_dataset(cache_dir='.', data_size=None, accelerator=None, norm_m
     return X, Y
 
 
-def get_low_resolution(X, factor):
+def get_low_resolution(X, factor, channels_first=True):
     shape = X.shape
     if len(shape) == 4:
         X_down = [downscale_local_mean(img, (shape[1], factor, factor)) for img in X]
-        X_up = [resize_local_mean(img, output_shape=(shape[2], shape[3]), channel_axis=0) for img in X_down]
+        if channels_first:
+            X_up = [resize_local_mean(img, output_shape=(shape[2], shape[3]), channel_axis=0) for img in X_down]
+        else:
+            X_up = [resize_local_mean(img, output_shape=(shape[1], shape[2]), channel_axis=-1) for img in X_down]
+    else:
+        raise ValueError
     return np.array(X_up).astype(np.float32)
