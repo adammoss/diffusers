@@ -157,7 +157,7 @@ def get_low_resolution(X, factor, channels_first=True, use_resize=True):
     shape = X.shape
     if len(shape) == 4:
         if use_resize:
-            X_down = [resize(img, (shape[1], factor, factor)) for img in X]
+            X_down = [resize(img, (shape[1], int(shape[2] / factor), int(shape[3] / factor))) for img in X]
         else:
             X_down = [downscale_local_mean(img, (shape[1], factor, factor)) for img in X]
         if channels_first:
