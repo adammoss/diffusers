@@ -102,7 +102,8 @@ def inpaint(model, images, mask, device=None, num_inference_steps=None, generato
     return images
 
 
-def img2img(model, images, device=None, num_inference_steps=None, batch_size=1, generator=None):
+def img2img(model, images, device=None, num_inference_steps=None, encoder_hidden_states=None,
+            batch_size=1, generator=None):
     pipeline = DDPMConditionPipeline.from_pretrained(model)
     if device is not None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -113,6 +114,7 @@ def img2img(model, images, device=None, num_inference_steps=None, batch_size=1, 
         batch_size=batch_size,
         num_inference_steps=num_inference_steps,
         output_type="numpy",
+        encoder_hidden_states=encoder_hidden_states,
         conditional_image=torch.from_numpy(images),
         generator=generator,
     ).images
