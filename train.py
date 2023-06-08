@@ -302,7 +302,7 @@ def parse_args():
         choices=["mse", "huber"],
     )
     parser.add_argument("--ddpm_num_steps", type=int, default=1000)
-    parser.add_argument("--ddpm_num_inference_steps", type=int, default=1000)
+    parser.add_argument("--ddpm_num_inference_steps", type=int, default=None)
     parser.add_argument("--ddpm_beta_schedule", type=str, default="squaredcos_cap_v2")
     parser.add_argument(
         "--checkpointing_steps",
@@ -371,6 +371,9 @@ def main(args):
         if args.dataset_conditional_name is not None:
             args.output_dir += '-' + args.dataset_conditional_name.replace("_", "-")
         args.output_dir += '-%s' % int(time.time())
+
+    if args.ddpm_num_inference_steps is None:
+        args.ddpm_num_inference_steps = args.ddpm_num_steps
 
     logging_dir = os.path.join(args.output_dir, args.logging_dir)
 
