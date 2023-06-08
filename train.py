@@ -130,6 +130,12 @@ def parse_args():
         default="output/ddpm",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        action='append',
+        default=None,
+    )
     parser.add_argument("--overwrite_output_dir", action="store_true")
     parser.add_argument(
         "--cache_dir",
@@ -880,7 +886,17 @@ def main(args):
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
         run = os.path.split(__file__)[-1].split(".")[0]
-        accelerator.init_trackers(run)
+        tags = ["resolution_%s" % args.resolution, args.prediction_type, args.ddpm_beta_schedule,
+                "steps_%s" % args.ddpm_num_steps]
+        if args.conditional:
+            tags += ["conditional"]
+        else:
+            tags += ["non_conditional"]
+        if args.tag is not None:
+            tags += args.tag
+        init_kwargs = {"wandb": {"tags": tags}}
+        config = {"train_batch_size": args.train_batch_size}
+        accelerator.init_trackers(run, config=config, init_kwargs=init_kwargs)
 
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
