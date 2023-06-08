@@ -6,7 +6,15 @@ Install requirements
 pip install -r requirements.txt
 ```
 
-Set up Hugging Face account to get access token.
+Set up Hugging Face account to get access token. You can then login by 
+
+```
+huggingface-cli login
+```
+
+```
+wandb login
+```
 
 ## Stage 1 VAE training 
 
