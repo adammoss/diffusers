@@ -141,7 +141,7 @@ def parse_args():
     parser.add_argument(
         "--suffix",
         type=str,
-        default="samples",
+        default="None",
     )
     parser.add_argument(
         "--num_samples",
@@ -185,7 +185,10 @@ if __name__ == "__main__":
                                   batch_size=args.num_samples,
                                   device=args.device,
                                   generator=generator)
-        np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+        if args.suffix is not None:
+            np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+        else:
+            np.save(os.path.join(args.output_dir, args.model + ".npy"), images)
     elif args.action == "conditional_samples":
         encoder_hidden_states = []
         for i in range(args.num_samples):
@@ -203,9 +206,14 @@ if __name__ == "__main__":
                                   encoder_hidden_states=encoder_hidden_states,
                                   num_inference_steps=args.num_inference_steps,
                                   generator=generator)
-        np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
-        np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
-                np.array(encoder_hidden_states))
+        if args.suffix is not None:
+            np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+            np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
+                    np.array(encoder_hidden_states))
+        else:
+            np.save(os.path.join(args.output_dir, args.model + ".npy"), images)
+            np.save(os.path.join(args.output_dir, args.model + "-encoder-states.npy"),
+                    np.array(encoder_hidden_states))
     elif args.action == "class_conditional_samples":
         encoder_hidden_states = []
         for i in range(args.num_samples):
@@ -224,6 +232,11 @@ if __name__ == "__main__":
                                   encoder_hidden_states=encoder_hidden_states,
                                   num_inference_steps=args.num_inference_steps,
                                   generator=generator)
-        np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
-        np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
-                np.array(encoder_hidden_states))
+        if args.suffix is not None:
+            np.save(os.path.join(args.output_dir, args.model + "-%s.npy" % args.suffix), images)
+            np.save(os.path.join(args.output_dir, args.model + "-%s-encoder-states.npy" % args.suffix),
+                    np.array(encoder_hidden_states))
+        else:
+            np.save(os.path.join(args.output_dir, args.model + ".npy"), images)
+            np.save(os.path.join(args.output_dir, args.model + "-encoder-states.npy"),
+                    np.array(encoder_hidden_states))
