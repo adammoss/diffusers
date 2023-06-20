@@ -141,7 +141,7 @@ def parse_args():
     parser.add_argument(
         "--suffix",
         type=str,
-        default="None",
+        default=None,
     )
     parser.add_argument(
         "--num_samples",
