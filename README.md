@@ -31,12 +31,18 @@ on the SIMBA N-body dataset. We report on the average discrepancy with the under
 | V          | 1000      | Linear   | $6.9 \pm 0.4$   |
 | V          | 1000      | Cosine   | $4.9 \pm 0.7$   |
 | V          | 1000      | Sigmoid  | $6.3 \pm 1.2$   |
+| Sample SN  | 1000      | Linear   | $5.7 \pm 0.3$   |
+| Sample SN  | 1000      | Cosine   | $0.0 \pm 0.0$   |
+| Sample SN  | 1000      | Sigmoid  | $0.0 \pm 0.0$   |
 | Epsilon    | 2000      | Linear   | $5.5 \pm 0.5$   |
 | Epsilon    | 2000      | Cosine   | $11.0 \pm 2.5$  |
 | Epsilon    | 2000      | Sigmoid  | $4.7 \pm 0.1$   |
 | V          | 2000      | Linear   | $5.5 \pm 0.8$   |
 | V          | 2000      | Cosine   | $2.6 \pm 0.3$   |
-| V          | 2000      | Sigmoid  | $0.0 \pm 0.0$   |
+| V          | 2000      | Sigmoid  | $6.4 \pm 0.6$   |
+| Sample SN  | 2000      | Linear   | $0.0 \pm 0.0$   |
+| Sample SN  | 2000      | Cosine   | $0.0 \pm 0.0$   |
+| Sample SN  | 2000      | Sigmoid  | $0.0 \pm 0.0$   |
 
 ## Example runs in pixel space 
 
