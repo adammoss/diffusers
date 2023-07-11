@@ -885,15 +885,17 @@ def main(args):
         )
         if args.ddpm_enforce_snr:
             noise_scheduler = DDPMScheduler(
-                trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas),
+                trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas).numpy().tolist(),
                 num_train_timesteps=args.ddpm_num_steps,
                 prediction_type=args.prediction_type
             )
     else:
         noise_scheduler = DDPMScheduler(num_train_timesteps=args.ddpm_num_steps, beta_schedule=args.ddpm_beta_schedule)
         if args.ddpm_enforce_snr:
-            noise_scheduler = DDPMScheduler(trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas),
-                                            num_train_timesteps=args.ddpm_num_steps)
+            noise_scheduler = DDPMScheduler(
+                trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas).numpy().tolist(),
+                num_train_timesteps=args.ddpm_num_steps
+            )
 
     # Initialize the optimizer
     optimizer = torch.optim.AdamW(
