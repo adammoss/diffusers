@@ -59,6 +59,31 @@ def _extract_into_tensor(arr, timesteps, broadcast_shape):
     return res.expand(broadcast_shape)
 
 
+def enforce_zero_terminal_snr(betas):
+    # Convert betas to alphas_bar_sqrt
+    alphas = 1 - betas
+    alphas_bar = alphas.cumprod(0)
+    alphas_bar_sqrt = alphas_bar.sqrt()
+
+    # Store old values.
+    alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
+    alphas_bar_sqrt_T = alphas_bar_sqrt[-1].clone()
+
+    # Shift so the last timestep is zero.
+    alphas_bar_sqrt -= alphas_bar_sqrt_T
+
+    # Scale so the first timestep is back to the old value.
+    alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
+
+    # Convert alphas_bar_sqrt to betas
+    alphas_bar = alphas_bar_sqrt ** 2
+    alphas = alphas_bar[1:] / alphas_bar[:-1]
+    alphas = torch.cat([alphas_bar[0:1], alphas])
+    betas = 1 - alphas
+
+    return betas
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
@@ -304,6 +329,7 @@ def parse_args():
     parser.add_argument("--ddpm_num_steps", type=int, default=1000)
     parser.add_argument("--ddpm_num_inference_steps", type=int, default=None)
     parser.add_argument("--ddpm_beta_schedule", type=str, default="squaredcos_cap_v2")
+    parser.add_argument("--ddpm_enforce_snr", action="store_true")
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
@@ -857,8 +883,17 @@ def main(args):
             beta_schedule=args.ddpm_beta_schedule,
             prediction_type=args.prediction_type,
         )
+        if args.ddpm_enforce_snr:
+            noise_scheduler = DDPMScheduler(
+                trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas),
+                num_train_timesteps=args.ddpm_num_steps,
+                prediction_type=args.prediction_type
+            )
     else:
         noise_scheduler = DDPMScheduler(num_train_timesteps=args.ddpm_num_steps, beta_schedule=args.ddpm_beta_schedule)
+        if args.ddpm_enforce_snr:
+            noise_scheduler = DDPMScheduler(trained_betas=enforce_zero_terminal_snr(noise_scheduler.betas),
+                                            num_train_timesteps=args.ddpm_num_steps)
 
     # Initialize the optimizer
     optimizer = torch.optim.AdamW(
@@ -895,6 +930,8 @@ def main(args):
             tags += ["conditional"]
         else:
             tags += ["non_conditional"]
+        if args.ddpm_enforce_snr:
+            tags += ["enforce_snr"]
         if args.tag is not None:
             tags += args.tag
         init_kwargs = {"wandb": {"tags": tags}}
