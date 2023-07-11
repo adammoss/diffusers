@@ -64,19 +64,19 @@ def download(url, local_path, chunk_size=1024):
 
 
 def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None, transform=np.log,
-                    accelerator=None, norm_min=-1, norm_max=1):
+                    accelerator=None, norm_min=-1, norm_max=1, variant='LH'):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
     if (accelerator is None or accelerator.is_main_process) and \
-            not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)):
-        url = 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_LH_z=0.00.npy' % dataset_name
+            not os.path.isfile(os.path.join(cache_dir, 'Maps_%s_%s_z=0.00.npy' % (dataset_name, variant))):
+        url = 'https://users.flatironinstitute.org/~fvillaescusa/priv/DEPnzxoWlaTQ6CjrXqsm0vYi8L7Jy/CMD/2D_maps/data/Maps_%s_%s_z=0.00.npy' % (dataset_name, variant)
         download(url, os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name))
 
     if 'simba' in dataset_name.lower():
-        parameter_file = 'params_SIMBA.txt'
+        parameter_file = 'params_%s_SIMBA.txt' % variant
     elif 'illustris' in dataset_name.lower():
-        parameter_file = 'params_IllustrisTNG.txt'
+        parameter_file = 'params_%s_IllustrisTNG.txt' % variant
 
     if (accelerator is None or accelerator.is_main_process) and \
             not os.path.isfile(os.path.join(cache_dir, parameter_file)):
@@ -95,7 +95,7 @@ def get_cmd_dataset(dataset_name, cache_dir='.', data_size=None, resolution=None
     Y = (Y - minimum) / (maximum - minimum)
     Y = np.expand_dims(Y, 1)
 
-    X = np.load(os.path.join(cache_dir, 'Maps_%s_LH_z=0.00.npy' % dataset_name)).astype(np.float32)
+    X = np.load(os.path.join(cache_dir, 'Maps_%s_%s_z=0.00.npy' % (dataset_name, variant))).astype(np.float32)
     if data_size is not None:
         X = X[0:data_size]
     if resolution is not None:
