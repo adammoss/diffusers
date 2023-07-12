@@ -6,6 +6,7 @@ import numpy as np
 from diffusers.utils import randn_tensor
 from diffusers.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 from diffusers import AutoencoderKL, VQModel
+from diffusers import DDIMScheduler, DDPMScheduler
 
 
 class DDPMConditionPipeline(DiffusionPipeline):
@@ -114,7 +115,10 @@ class DDPMConditionPipeline(DiffusionPipeline):
                     model_output = self.unet(image, t).sample
 
             # 2. compute previous image: x_t -> x_t-1
-            image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
+            if self.scheduler.__class__ in [DDIMScheduler, DDPMScheduler]:
+                image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
+            else:
+                image = self.scheduler.step(model_output, t, image).prev_sample
 
         if average_out_channels:
             image = image.mean(keepdim=True, dim=1)

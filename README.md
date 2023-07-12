@@ -23,26 +23,26 @@ wandb login
 The noise schedule ablation scripts are found in the `scripts` directory. Each of these performs 3 runs at 128x128 resolution 
 on the SIMBA N-body dataset. We report on the average discrepancy with the underlying simulations for the power spectrum, Minkowski Functionals and pixel histograms. 
 
-| Prediction | Timesteps | Schedule | P(k) difference |
-|------------|-----------|----------|-----------------|
-| Epsilon    | 1000      | Linear   | $9.2 \pm 1.1$   |
-| Epsilon    | 1000      | Cosine   | $10.5 \pm 0.9$  |
-| Epsilon    | 1000      | Sigmoid  | $4.1 \pm 1.3$   |
-| V          | 1000      | Linear   | $7.4 \pm 0.4$   |
-| V          | 1000      | Cosine   | $5.3 \pm 0.7$   |
-| V          | 1000      | Sigmoid  | $5.8 \pm 1.2$   |
-| Sample SN  | 1000      | Linear   | $5.1 \pm 0.2$   |
-| Sample SN  | 1000      | Cosine   | $0.0 \pm 0.0$   |
-| Sample SN  | 1000      | Sigmoid  | $0.0 \pm 0.0$   |
-| Epsilon    | 2000      | Linear   | $6.0 \pm 0.5$   |
-| Epsilon    | 2000      | Cosine   | $10.5 \pm 2.5$  |
-| Epsilon    | 2000      | Sigmoid  | $4.3 \pm 0.1$   |
-| V          | 2000      | Linear   | $6.0 \pm 0.8$   |
-| V          | 2000      | Cosine   | $3.0 \pm 0.3$   |
-| V          | 2000      | Sigmoid  | $6.2 \pm 0.6$   |
-| Sample SN  | 2000      | Linear   | $0.0 \pm 0.0$   |
-| Sample SN  | 2000      | Cosine   | $0.0 \pm 0.0$   |
-| Sample SN  | 2000      | Sigmoid  | $0.0 \pm 0.0$   |
+| Prediction | Timesteps | Schedule | P(k) difference | Hist different  |
+|------------|-----------|----------|-----------------|-----------------|
+| Epsilon    | 1000      | Linear   | $9.2 \pm 1.1$   | $7.0 \pm 3.2$   |
+| Epsilon    | 1000      | Cosine   | $10.5 \pm 0.9$  | $107.4 \pm 6.0$ |
+| Epsilon    | 1000      | Sigmoid  | $4.1 \pm 1.4$   | $6.7 \pm 2.2$   |
+| V          | 1000      | Linear   | $7.4 \pm 0.4$   | $6.5 \pm 1.0$   |
+| V          | 1000      | Cosine   | $5.3 \pm 0.7$   | $7.9 \pm 0.9$   |
+| V          | 1000      | Sigmoid  | $5.8 \pm 1.2$   | $8.0 \pm 2.8$   |
+| Sample SN  | 1000      | Linear   | $5.1 \pm 0.2$   | $8.3 \pm 0.9$   |
+| Sample SN  | 1000      | Cosine   | $2.9 \pm 0.4$   | $12.8 \pm 4.5$  |
+| Sample SN  | 1000      | Sigmoid  | $4.7 \pm 1.0$   | $10.2 \pm 1.9$  |
+| Epsilon    | 2000      | Linear   | $6.0 \pm 0.5$   | $5.9 \pm 0.8$   |
+| Epsilon    | 2000      | Cosine   | $10.5 \pm 2.5$  | $89.9 \pm 20.9$ |
+| Epsilon    | 2000      | Sigmoid  | $4.3 \pm 0.1$   | $6.5 \pm 1.8$   |
+| V          | 2000      | Linear   | $6.0 \pm 0.8$   | $7.8 \pm 2.0$   |
+| V          | 2000      | Cosine   | $3.0 \pm 0.3$   | $5.9 \pm 1.9$   |
+| V          | 2000      | Sigmoid  | $6.2 \pm 0.6$   | $8.4 \pm 0.9$   |
+| Sample SN  | 2000      | Linear   | $4.0 \pm 0.0$   | $7.8 \pm 2.1$   |
+| Sample SN  | 2000      | Cosine   | $1.7 \pm 0.2$   | $11.8 \pm 2.9$  |
+| Sample SN  | 2000      | Sigmoid  | $4.3 \pm 0.9$   | $10.5 \pm 1.0$  |
 
 ## Example runs in pixel space 
 
