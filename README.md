@@ -23,7 +23,7 @@ wandb login
 The noise schedule ablation scripts are found in the `scripts` directory. Each of these performs 3 runs at 128x128 resolution 
 on the SIMBA N-body dataset. We report on the average discrepancy with the underlying simulations for the power spectrum, Minkowski Functionals and pixel histograms. 
 
-| Prediction | Timesteps | Schedule | P(k) difference | Hist different  |
+| Prediction | Timesteps | Schedule | P(k) difference | Hist difference |
 |------------|-----------|----------|-----------------|-----------------|
 | Epsilon    | 1000      | Linear   | $9.2 \pm 1.1$   | $7.0 \pm 3.2$   |
 | Epsilon    | 1000      | Cosine   | $10.5 \pm 0.9$  | $107.4 \pm 6.0$ |
